@@ -1,0 +1,11 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+sqlalchemy==2.0.34
+pymysql==1.1.1
+python-dotenv==1.0.1
+plotly==5.24.1
+# Optional (uncomment if you add LLM + embeddings)
+# langchain==0.2.14
+# openai==1.43.0
+# chromadb==0.5.5
