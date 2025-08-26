@@ -23,7 +23,11 @@ cp .env.example .env
 #### Optional dev tools setup
 ```bash
 pip install -r requirements-dev.txt
+pre-commit install
 ```
+
+This installs optional dev tools and sets up Git hooks.  
+After this, black/isort/ruff/pytest will run automatically before every commit.
 
 ### 2) Run MySQL (optional, via Docker)
 ```bash
