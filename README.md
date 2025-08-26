@@ -6,12 +6,15 @@ and test scaffolding you can extend.
 
 ## Quick start
 
-### 1) Set environment
+### 1) Setup environment
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your DB creds and LLM key (if using one)
+
+# Optional dev tools setup
+pip install -r requirements-dev.txt
 ```
 
 ### 2) Run MySQL (optional, via Docker)
@@ -21,12 +24,17 @@ docker compose up -d db
 mysql -h 127.0.0.1 -P 3306 -u root -proot sales < db/init.sql
 ```
 
-### 3) Launch API
+### 3) Run tests (optional)
+```bash
+pytest
+```
+
+### 4) Launch API
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4) Try it
+### 5) Try it
 ```bash
 curl -X POST http://localhost:8000/ask -H "Content-Type: application/json" -d '{"question":"Top 5 products by revenue last quarter?"}'
 ```
