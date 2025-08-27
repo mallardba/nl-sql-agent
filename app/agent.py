@@ -2,9 +2,10 @@
 Agent orchestration (stub).
 Wire in an LLM+ReAct loop here, or keep simple rules for MVP.
 """
-from .tools import describe_schema, run_sql, render_chart
+
 from .cache import get_cache, set_cache
-from .prompts import SYSTEM_HINT
+from .tools import render_chart, run_sql
+
 
 # Very simple MVP: look for keywords and route to canned SQL patterns.
 # Replace with LangChain or your own planner when ready.
@@ -30,6 +31,7 @@ def _heuristic_sql(question: str) -> str:
     # Fallback simple sample
     return "SELECT * FROM customers LIMIT 10;"
 
+
 def answer_question(question: str) -> dict:
     cache_key = f"q::{question.strip()}"
     cached = get_cache(cache_key)
@@ -37,7 +39,7 @@ def answer_question(question: str) -> dict:
         return cached
 
     # (1) Inspect schema (for MVP, just fetch once; later: vector search)
-    schema = describe_schema()
+    # schema = describe_schema()
 
     # (2) Draft SQL (heuristic for MVP; replace with LLM later)
     sql = _heuristic_sql(question)
@@ -52,6 +54,11 @@ def answer_question(question: str) -> dict:
         chart_json = render_chart(rows, spec={"type": "bar"})
 
     answer_text = "Query executed successfully."
-    result = {"answer_text": answer_text, "sql": sql, "rows": rows, "chart_json": chart_json}
+    result = {
+        "answer_text": answer_text,
+        "sql": sql,
+        "rows": rows,
+        "chart_json": chart_json,
+    }
     set_cache(cache_key, result)
     return result

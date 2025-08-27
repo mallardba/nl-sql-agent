@@ -1,20 +1,25 @@
 import os
 from typing import Any, Dict, List
+
 import plotly.express as px
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/sales")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/sales"
+)
 
 _engine: Engine | None = None
+
 
 def _engine_once() -> Engine:
     global _engine
     if _engine is None:
         _engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     return _engine
+
 
 def describe_schema() -> Dict[str, Any]:
     """Return basic table/column info (portable across MySQL)."""
@@ -24,11 +29,23 @@ def describe_schema() -> Dict[str, Any]:
         out = {}
         for (tname,) in tables:
             cols = conn.execute(text(f"SHOW COLUMNS FROM {tname}")).fetchall()
-            out[tname] = [{"Field": c[0], "Type": c[1], "Null": c[2], "Key": c[3], "Default": c[4], "Extra": c[5]} for c in cols]
+            out[tname] = [
+                {
+                    "Field": c[0],
+                    "Type": c[1],
+                    "Null": c[2],
+                    "Key": c[3],
+                    "Default": c[4],
+                    "Extra": c[5],
+                }
+                for c in cols
+            ]
         return out
+
 
 def get_schema_metadata() -> Dict[str, Any]:
     return {"database_url": DATABASE_URL, "schema": describe_schema()}
+
 
 def run_sql(sql: str) -> List[Dict[str, Any]]:
     # Simple safety: only allow SELECT by default
@@ -41,7 +58,10 @@ def run_sql(sql: str) -> List[Dict[str, Any]]:
         rows = [dict(zip(cols, row)) for row in res.fetchall()]
         return rows
 
-def render_chart(rows: List[Dict[str, Any]], spec: Dict[str, Any] | None = None) -> Dict[str, Any]:
+
+def render_chart(
+    rows: List[Dict[str, Any]], spec: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
     spec = spec or {"type": "bar"}
     if not rows:
         return {}

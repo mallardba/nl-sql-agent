@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.asyncio
 async def test_ask_endpoint_if_present(client):
     ping = await client.options("/ask")

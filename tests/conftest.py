@@ -1,6 +1,7 @@
 import os
-import pytest
 from typing import AsyncGenerator
+
+import pytest
 
 try:
     from app.main import app as fastapi_app
@@ -12,15 +13,18 @@ try:
 except ImportError:
     httpx = None
 
+
 @pytest.fixture(scope="session")
 def app():
     if fastapi_app is None:
         pytest.skip("FastAPI app not importable (app.main:app).")
     return fastapi_app
 
+
 @pytest.fixture(scope="session")
 def database_url() -> str:
     return os.getenv("DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/sales")
+
 
 @pytest.fixture
 async def client(app) -> AsyncGenerator:
