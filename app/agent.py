@@ -41,16 +41,17 @@ def _heuristic_sql(question: str) -> str:
 
 
 def answer_question(question: str) -> dict:
-    cache_key = f"q::{question.strip().lower()}"
+    q = question.lower()
+    cache_key = f"q::{q.strip()}"
     cached = get_cache(cache_key)
     if cached:
-        return cached
+        return cached  # Return the cached value directly
 
     # (1) Inspect schema (for MVP, just fetch once; later: vector search)
     # schema = describe_schema()
 
     # (2) Draft SQL (heuristic for MVP; replace with LLM later)
-    sql = _heuristic_sql(question)
+    sql = _heuristic_sql(q)
 
     # (3) Execute
     rows = run_sql(sql)
@@ -82,6 +83,6 @@ def answer_question(question: str) -> dict:
 
 
 def _months_from_question(q: str, default=3):
-    m = re.search(r"\blast\s+(\d{1,2})\s+months?\b", q)
+    m = re.search(r"\blast\s+(\d{1,2})\s+months?\b", q.lower())
     n = int(m.group(1)) if m else default
     return max(1, min(n, 24))  # clamp 1..24

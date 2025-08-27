@@ -1,6 +1,6 @@
 import os
 from decimal import Decimal
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Optional
 
 import numpy as np
 import plotly.express as px
@@ -63,7 +63,7 @@ def run_sql(sql: str) -> List[Dict[str, Any]]:
 
 
 def render_chart(
-    rows: List[Dict[str, Any]], spec: Dict[str, Any] | None = None
+    rows: List[Dict[str, Any]], spec: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     spec = spec or {"type": "bar"}
     if not rows:
