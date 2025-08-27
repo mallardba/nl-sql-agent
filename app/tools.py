@@ -1,6 +1,8 @@
 import os
+from decimal import Decimal
 from typing import Any, Dict, List
 
+import numpy as np
 import plotly.express as px
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -77,3 +79,17 @@ def render_chart(
     else:
         fig = px.bar(rows, x=x_key, y=y_key)
     return fig.to_dict()
+
+
+def to_jsonable(x):
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, (np.generic,)):
+        return x.item()
+    if isinstance(x, Decimal):
+        return float(x)
+    if isinstance(x, dict):
+        return {k: to_jsonable(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple, set)):
+        return [to_jsonable(v) for v in x]
+    return x

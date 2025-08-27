@@ -4,7 +4,7 @@ Wire in an LLM+ReAct loop here, or keep simple rules for MVP.
 """
 
 from .cache import get_cache, set_cache
-from .tools import render_chart, run_sql
+from .tools import render_chart, run_sql, to_jsonable
 
 
 # Very simple MVP: look for keywords and route to canned SQL patterns.
@@ -13,12 +13,12 @@ def _heuristic_sql(question: str) -> str:
     q = question.lower()
     if "top" in q and "product" in q and ("revenue" in q or "sales" in q):
         return (
-            "SELECT p.name AS product, SUM(oi.qty * oi.price) AS revenue "
+            "SELECT p.name AS product, CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DOUBLE) AS revenue "
             "FROM order_items oi "
             "JOIN products p ON p.id = oi.product_id "
             "JOIN orders o ON o.id = oi.order_id "
-            "WHERE o.order_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) "
-            "GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+            "WHERE o.status <> 'CANCELLED' AND o.order_date >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) "
+            "GROUP BY p.name ORDER BY revenue DESC LIMIT 10;"
         )
     if "sales by month" in q or ("monthly" in q and "sales" in q):
         return (
@@ -49,9 +49,13 @@ def answer_question(question: str) -> dict:
 
     # (4) Try to produce a chart for common cases
     chart_json = None
-    if "GROUP BY 1" in sql or "ORDER BY 1" in sql:
-        # Simple signal to render a chart for grouped results
-        chart_json = render_chart(rows, spec={"type": "bar"})
+    if rows:
+        cols = list(rows[0].keys())
+        if len(cols) >= 2 and isinstance(rows[0][cols[1]], (int, float)):
+            chart_json = render_chart(rows, spec={"type": "bar"})
+
+    if chart_json is not None:
+        chart_json = to_jsonable(chart_json)
 
     answer_text = "Query executed successfully."
     result = {
