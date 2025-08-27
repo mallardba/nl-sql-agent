@@ -1,10 +1,11 @@
 import os
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import numpy as np
 import plotly.express as px
 from dotenv import load_dotenv
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -88,8 +89,12 @@ def to_jsonable(x):
         return x.item()
     if isinstance(x, Decimal):
         return float(x)
-    if isinstance(x, dict):
+    if isinstance(x, Mapping):
         return {k: to_jsonable(v) for k, v in x.items()}
     if isinstance(x, (list, tuple, set)):
         return [to_jsonable(v) for v in x]
     return x
+
+
+def respond(payload):
+    return jsonable_encoder(payload)  # use for all returns
