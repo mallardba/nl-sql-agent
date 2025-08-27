@@ -159,6 +159,7 @@ nl-sql-agent/
 |─ requirements-dev.txt
 |─ pytest.ini
 ├─ docker-compose.yml
+├─ .pre-commit-config.yaml
 ├─ .env.example
 |─ .env.template
 └─ README.md
@@ -175,6 +176,35 @@ nl-sql-agent/
 - Use a **read-only** DB user for the API.
 - Sanitize and/or restrict SQL (only SELECT by default).
 - Limit rows/columns in responses; paginate for large results.
+
+
+
+
+## NL–SQL Agent: Master Checklist
+
+### MVP (Minmum Viable Product)
+- [ ] FastAPI app with `/ask`, `/schema`, `/healthz`
+- [ ] SQLAlchemy connection + MySQL 8 seed (db/init.sql)
+- [ ] NL → SQL draft (rule-based/LLM stub), execute, return rows
+
+### Schema memory + recovery
+- [ ] `describe_schema()` and `search_schema()` over embedded docs
+- [ ] Retry loop on SQL errors (introspect → fix → rerun)
+- [ ] Guardrails: read-only user, block DDL/DML, LIMIT defaults
+
+### Charts + caching
+- [ ] Plotly chart builders (`charts.py`) + optional `chart_json` in responses
+- [ ] Simple cache (LRU/sqlite) keyed by (question, schema_version)
+
+### Tests + Docker
+- [ ] Unit tests for intents (top-N, date windows, grouping)
+- [ ] E2E goldens (monthly sales 6m; top 10 products last quarter)
+- [ ] `docker-compose.yml` for MySQL; happy-path script/Makefile
+
+### Polish
+- [ ] README: Quick start, Reference (Data model, Endpoints, Layout)
+- [ ] `.env.example` + `.env.template` (DB URLs matrix)
+- [ ] Pre-commit (black, isort, ruff, pytest)
 
 ---
 

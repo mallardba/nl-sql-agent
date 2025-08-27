@@ -2,31 +2,38 @@
 -- Comprehensive MySQL 8 schema & seed data for analytics/agent testing
 -- Safe to run multiple times (drops first). Uses only SELECT in typical queries.
 
+CREATE DATABASE IF NOT EXISTS sales;
+USE sales;
+
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
 /* =========================
    DROP (for idempotency)
    ========================= */
-DROP TABLE IF EXISTS returns;
-DROP TABLE IF EXISTS shipments;
-DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS order_items;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS promotions;
-DROP TABLE IF EXISTS inventories;
-DROP TABLE IF EXISTS product_tags;
-DROP TABLE IF EXISTS tags;
-DROP TABLE IF EXISTS products;
-DROP TABLE IF EXISTS categories;
-DROP TABLE IF EXISTS customers;
-DROP TABLE IF EXISTS regions;
-DROP TABLE IF EXISTS employees;
-DROP TABLE IF EXISTS channels;
+SET FOREIGN_KEY_CHECKS = 0;
 
-DROP VIEW IF EXISTS v_monthly_sales;
-DROP VIEW IF EXISTS v_product_revenue;
-DROP VIEW IF EXISTS v_customer_ltv;
+DROP VIEW IF EXISTS v_monthly_sales, v_product_revenue, v_customer_ltv;
+
+-- Drop child tables first or just drop all with FK checks off:
+DROP TABLE IF EXISTS
+  returns,
+  shipments,
+  payments,
+  order_items,
+  orders,
+  promotions,
+  inventories,
+  product_tags,
+  tags,
+  products,
+  categories,
+  employees,
+  customers,
+  regions,
+  channels;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 /* =========================
    DIMENSIONS
@@ -106,8 +113,7 @@ CREATE TABLE promotions (
   name VARCHAR(128) NOT NULL,
   discount_pct DECIMAL(5,2) NOT NULL CHECK (discount_pct BETWEEN 0 AND 100),
   starts_on DATE NOT NULL,
-  ends_on DATE NOT NULL,
-  active BOOLEAN GENERATED ALWAYS AS (CURRENT_DATE() BETWEEN starts_on AND ends_on) STORED
+  ends_on DATE NOT NULL
 ) ENGINE=InnoDB;
 
 /* =========================
