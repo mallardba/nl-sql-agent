@@ -1,12 +1,14 @@
-fastapi==0.115.0
-uvicorn==0.30.6
-pydantic==2.9.2
-sqlalchemy==2.0.34
-pymysql==1.1.1
-python-dotenv==1.0.1
-plotly==5.24.1
-pandas==2.3.2
-# Optional (uncomment if you add LLM + embeddings)
-# langchain==0.2.14
-# openai==1.43.0
-# chromadb==0.5.5
+fastapi>=0.104.0                # Modern web framework for building APIs
+uvicorn[standard]>=0.24.0        # ASGI server to run FastAPI applications
+sqlalchemy>=2.0.0               # Database ORM and toolkit
+pymysql>=1.1.0                  # MySQL database connector for Python
+plotly>=5.17.0                  # Interactive plotting library for charts
+numpy>=1.24.0                   # Numerical computing library
+python-dotenv>=1.0.0            # Load environment variables from .env files
+pydantic>=2.0.0                 # Data validation using Python type annotations
+
+# LangChain and OpenAI integration
+langchain>=0.1.0                # Framework for building LLM applications
+langchain-openai>=0.0.5         # OpenAI integration for LangChain
+
+# add chromadb for embeddings
