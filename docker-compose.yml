@@ -7,4 +7,9 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      - mysql_data:/var/lib/mysql
       - ./db:/docker-entrypoint-initdb.d
+      - ./chroma_db:/app/chroma_db
+
+volumes:
+  mysql_data:

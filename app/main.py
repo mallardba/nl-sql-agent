@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from .agent import answer_question
 from .charts import create_complete_html_page
+from .schema_index import get_embedding_stats, initialize_schema_embeddings
 from .tools import get_schema_metadata
 
 app = FastAPI(title="NL-SQL Agent", version="0.1.0")
@@ -21,6 +22,30 @@ def healthz():
 @app.get("/schema")
 def schema():
     return get_schema_metadata()
+
+
+@app.get("/embeddings/status")
+def embeddings_status():
+    """Check status of embeddings system."""
+    try:
+        stats = get_embedding_stats()
+        return {"status": "ok", "embeddings": stats}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/embeddings/initialize")
+def initialize_embeddings():
+    """Initialize schema embeddings."""
+    try:
+        schema_info = get_schema_metadata()
+        initialize_schema_embeddings(schema_info)
+        return {
+            "status": "success",
+            "message": "Schema embeddings initialized successfully",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/ask")

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 def create_html_table(rows: List[Dict[str, Any]], title: str = "Query Results") -> str:
     """Convert SQL results to an HTML table."""
-    if not rows:
+    if not rows or len(rows) == 0:
         return f"<h3>{title}</h3><p>No results found.</p>"
 
     # Get column headers from first row

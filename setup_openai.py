@@ -87,7 +87,7 @@ def main():
     if imports_ok and openai_ok:
         print("🎉 Setup complete! Your agent is ready to use OpenAI.")
         print("\nNext steps:")
-        print("1. Start your FastAPI server: uvicorn app.main:app --reload")
+        print("1. Start your FastAPI server: python -m uvicorn app.main:app --reload")
         print("2. Start your Docker container: docker compose up -d db")
         print("3. Test with: ./ask-and-open.sh 'your question here'")
     else:

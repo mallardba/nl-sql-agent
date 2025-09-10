@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
 
 import numpy as np
-import plotly.express as px
+import plotly.graph_objects as go
 from dotenv import load_dotenv
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
@@ -14,7 +14,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/sales"
 )
 
-_engine: Engine | None = None
+_engine: Optional[Engine] = None
 
 
 def _engine_once() -> Engine:
@@ -63,22 +63,46 @@ def run_sql(sql: str) -> List[Dict[str, Any]]:
 
 
 def render_chart(
-    rows: List[Dict[str, Any]], spec: Optional[Dict[str, Any]] = None
+    rows: List[Dict[str, Any]],
+    spec: Optional[Dict[str, Any]] = None,
+    x_key: Optional[str] = None,
+    y_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     spec = spec or {"type": "bar"}
-    if not rows:
+    if not rows or len(rows) == 0:
         return {}
-    # Heuristic: if first column is a label and second is numeric → bar
-    keys = list(rows[0].keys())
-    x_key = keys[0]
-    y_key = keys[1] if len(keys) > 1 else None
-    if y_key is None:
-        return {}
-    fig = None
-    if spec.get("type") == "line":
-        fig = px.line(rows, x=x_key, y=y_key)
+
+    # If x_key and y_key are provided, use them; otherwise use heuristic
+    if x_key and y_key:
+        pass  # Use provided keys
     else:
-        fig = px.bar(rows, x=x_key, y=y_key)
+        # Heuristic: if first column is a label and second is numeric → bar
+        keys = list(rows[0].keys())
+        x_key = keys[0]
+        y_key = keys[1] if len(keys) > 1 else None
+        if y_key is None:
+            return {}
+
+    # Extract data for plotting
+    x_data = [row[x_key] for row in rows]
+    y_data = [row[y_key] for row in rows]
+
+    # Create figure using lower-level Plotly API
+    fig = go.Figure()
+
+    if spec.get("type") == "line":
+        fig.add_trace(go.Scatter(x=x_data, y=y_data, mode="lines+markers", name=y_key))
+    else:
+        fig.add_trace(go.Bar(x=x_data, y=y_data, name=y_key))
+
+    # Update layout
+    fig.update_layout(
+        title=f"{y_key} by {x_key}",
+        xaxis_title=x_key,
+        yaxis_title=y_key,
+        showlegend=False,
+    )
+
     return fig.to_dict()
 
 

@@ -51,6 +51,35 @@ def _get_llm():
     return _llm
 
 
+def _fix_sql_syntax(sql: str) -> str:
+    """Fix common SQL syntax errors."""
+    # Fix CAST syntax errors
+    if "CAST(" in sql:
+        import re
+
+        # Pattern: CAST(expression AS revenue -> CAST(expression AS DECIMAL(10,2)) AS revenue
+        # This handles cases where there's no space before AS or the alias is directly after AS
+        pattern = (
+            r"CAST\(([^)]+)\)\s*AS\s+(\w+)(?=\s+FROM|\s+ORDER|\s+GROUP|\s+WHERE|\s*$)"
+        )
+
+        def replace_cast(match):
+            expression = match.group(1)
+            alias = match.group(2)
+            return f"CAST({expression} AS DECIMAL(10,2)) AS {alias}"
+
+        sql = re.sub(pattern, replace_cast, sql)
+
+        # Also handle the specific case: CAST(...) AS revenue FROM
+        sql = re.sub(
+            r"CAST\(([^)]+)\)\s*AS\s+revenue\s+FROM",
+            r"CAST(\1 AS DECIMAL(10,2)) AS revenue FROM",
+            sql,
+        )
+
+    return sql
+
+
 def _generate_sql_with_ai(question: str, schema_info: Dict[str, Any]) -> str:
     """Generate SQL using OpenAI based on the question and schema."""
     if not LANGCHAIN_AVAILABLE:
@@ -74,10 +103,18 @@ def _generate_sql_with_ai(question: str, schema_info: Dict[str, Any]) -> str:
         4. Use meaningful column aliases
         5. Order results logically
         6. Limit results to reasonable amounts (use LIMIT when appropriate)
-        7. Handle dates properly using MySQL date functions
+        7. Handle dates properly using MySQL date functions:
+           - "last year" = INTERVAL 12 MONTH
+           - "last quarter" = INTERVAL 3 MONTH  
+           - "last month" = INTERVAL 1 MONTH
+           - "last 6 months" = INTERVAL 6 MONTH
         8. Use aggregate functions (SUM, COUNT, AVG) when appropriate
+        9. When using CAST(), always specify the data type: CAST(expression AS DECIMAL(10,2))
+        10. Ensure all parentheses are properly closed
+        11. Test your SQL syntax before returning
         
-        Return only the SQL query, no explanations.
+        Return only the raw SQL query without any markdown formatting, code blocks, or explanations.
+        Example: SELECT * FROM table WHERE id = 1;
         """
 
         messages = [
@@ -88,9 +125,31 @@ def _generate_sql_with_ai(question: str, schema_info: Dict[str, Any]) -> str:
         response = llm.invoke(messages)
         sql = response.content.strip()
 
+        print(f"AI generated SQL: {sql}")
+
+        # Clean up markdown code blocks if present
+        if sql.startswith("```sql"):
+            sql = sql[6:]  # Remove ```sql
+        if sql.startswith("```"):
+            sql = sql[3:]  # Remove ```
+        if sql.endswith("```"):
+            sql = sql[:-3]  # Remove trailing ```
+        sql = sql.strip()
+
         # Basic safety check
         if not sql.lower().startswith("select"):
+            print(f"SQL doesn't start with SELECT: {sql[:50]}...")
             raise ValueError("Generated SQL is not a SELECT query")
+
+        # Fix common SQL syntax errors
+        original_sql = sql
+        sql = _fix_sql_syntax(sql)
+        if sql != original_sql:
+            print(f"Fixed SQL: {sql}")
+
+        # Basic SQL syntax validation
+        if sql.count("(") != sql.count(")"):
+            raise ValueError("Unmatched parentheses in SQL query")
 
         return sql
 
@@ -105,8 +164,8 @@ def _heuristic_sql_fallback(question: str) -> str:
     q = question.lower()
     if "top" in q and "product" in q and ("revenue" in q or "sales" in q):
         n = _months_from_question(q, default=3)
-        return (
-            "SELECT p.name AS product, CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS revenue "
+        sql = (
+            "SELECT p.name AS product, CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS revenue "
             "FROM order_items oi "
             "JOIN products p ON p.id = oi.product_id "
             "JOIN orders o ON o.id = oi.order_id "
@@ -114,6 +173,8 @@ def _heuristic_sql_fallback(question: str) -> str:
             f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
             "GROUP BY p.name ORDER BY revenue DESC LIMIT 10;"
         )
+        print(f"Heuristic generated SQL: {sql}")
+        return sql
     if "sales by month" in q or ("monthly" in q and "sales" in q):
         return (
             "SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, "
@@ -144,19 +205,87 @@ def answer_question(question: str) -> dict:
         # Generate SQL using AI (with fallback to heuristic)
         sql = _generate_sql_with_ai(question, schema_info)
 
-        # Execute the SQL
-        rows = run_sql(sql)
+        # Execute the SQL with error handling
+        try:
+            rows = run_sql(sql)
+        except Exception as sql_error:
+            print(f"SQL execution failed: {sql_error}")
+            # Try to fix common SQL errors and retry
+            if "CAST" in str(sql_error) and "AS " in sql:
+                print("Attempting to fix CAST syntax...")
+                fixed_sql = _fix_sql_syntax(sql)
+                if fixed_sql != sql:
+                    print(f"Fixed SQL: {fixed_sql}")
+                    rows = run_sql(fixed_sql)
+                    sql = fixed_sql  # Use the fixed SQL in response
+                else:
+                    raise sql_error
+            else:
+                raise sql_error
 
         # Generate chart if we have numeric data
         chart_json = None
-        if rows:
+        if rows and len(rows) > 0:
             cols = list(rows[0].keys())
             if len(cols) >= 2:
-                y_val = rows[0][cols[1]]
-                if isinstance(y_val, (int, float, Decimal)):
-                    x_name = cols[0].lower()
+                # Find the first numeric column for y-axis
+                y_col = None
+                x_col = None
+
+                # Look for numeric column (y-axis) - prefer revenue/sales/amount columns
+                for i, col in enumerate(cols):
+                    val = rows[0][col]
+                    if isinstance(val, (int, float, Decimal)):
+                        # Prefer columns with revenue, sales, amount, total, count, etc.
+                        if any(
+                            keyword in col.lower()
+                            for keyword in [
+                                "revenue",
+                                "sales",
+                                "amount",
+                                "total",
+                                "count",
+                                "sum",
+                                "avg",
+                            ]
+                        ):
+                            y_col = col
+                            break
+
+                # If no preferred numeric column found, use first numeric column
+                if not y_col:
+                    for i, col in enumerate(cols):
+                        val = rows[0][col]
+                        if isinstance(val, (int, float, Decimal)):
+                            y_col = col
+                            break
+
+                # Look for best text column for x-axis (prefer name over id)
+                for i, col in enumerate(cols):
+                    if col != y_col:  # Don't use the same column for both axes
+                        val = rows[0][col]
+                        if isinstance(val, str):
+                            # Prefer columns with "name" over "id"
+                            if "name" in col.lower():
+                                x_col = col
+                                break
+
+                # If no "name" column found, use first text column as fallback
+                if not x_col:
+                    for i, col in enumerate(cols):
+                        if col != y_col:  # Don't use the same column for both axes
+                            val = rows[0][col]
+                            if isinstance(val, str):
+                                x_col = col
+                                break
+
+                if y_col and x_col:
+                    print(f"Chart columns: x={x_col}, y={y_col}")
+                    x_name = x_col.lower()
                     chart_type = "line" if x_name in ("month", "date", "ym") else "bar"
-                    chart_json = render_chart(rows, spec={"type": chart_type})
+                    chart_json = render_chart(
+                        rows, spec={"type": chart_type}, x_key=x_col, y_key=y_col
+                    )
 
         if chart_json is not None:
             chart_json = to_jsonable(chart_json)
@@ -185,6 +314,19 @@ def answer_question(question: str) -> dict:
 
 def _months_from_question(q: str, default=3):
     """Extract number of months from question text."""
-    m = re.search(r"\blast\s+(\d{1,2})\s+months?\b", q.lower())
+    q_lower = q.lower()
+
+    # Handle specific time periods
+    if "last year" in q_lower or "past year" in q_lower:
+        return 12
+    elif "last quarter" in q_lower or "past quarter" in q_lower:
+        return 3
+    elif "last month" in q_lower or "past month" in q_lower:
+        return 1
+    elif "last 6 months" in q_lower or "past 6 months" in q_lower:
+        return 6
+
+    # Handle "last X months" pattern
+    m = re.search(r"\blast\s+(\d{1,2})\s+months?\b", q_lower)
     n = int(m.group(1)) if m else default
     return max(1, min(n, 24))  # clamp 1..24

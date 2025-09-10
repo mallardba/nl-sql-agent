@@ -30,7 +30,7 @@ def get_cache(key: str):
     return val
 
 
-def set_cache(key: str, value, ttl: int | None = _TTL_SECONDS):
+def set_cache(key: str, value, ttl: Optional[int] = _TTL_SECONDS):
     expires_at = (time.time() + ttl) if ttl else None
     _store[key] = (value, expires_at)
     _prune()
