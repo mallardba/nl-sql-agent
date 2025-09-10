@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
@@ -6,6 +8,9 @@ from .agent import answer_question
 from .charts import create_complete_html_page
 from .schema_index import get_embedding_stats, initialize_schema_embeddings
 from .tools import get_schema_metadata
+
+# Global debug flag - can be set via environment variable or command line
+DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"
 
 app = FastAPI(title="NL-SQL Agent", version="0.1.0")
 

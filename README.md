@@ -96,6 +96,13 @@ python test_embeddings.py
 
 ### 6) Launch API
 ```bash
+# Production server
+python run_server.py
+
+# Debug server (with verbose output)
+python run_debug_server.py
+
+# Or manually
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
