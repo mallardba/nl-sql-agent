@@ -52,9 +52,210 @@ def _get_llm():
     return _llm
 
 
-def _fix_sql_syntax(sql: str) -> str:
-    """Fix common SQL syntax errors using pattern-based corrections."""
+def determine_chart_type(
+    x_data: List[Any], y_data: List[Any], x_name: str, y_name: str, question: str
+) -> str:
+    """
+    Determine the most appropriate chart type based on data characteristics and question context.
 
+    Args:
+        x_data: X-axis data values
+        y_data: Y-axis data values
+        x_name: Name of X-axis column
+        y_name: Name of Y-axis column
+        question: Original user question for context
+
+    Returns:
+        Chart type: 'line', 'bar', 'pie', 'scatter', or 'area'
+    """
+    # Convert to lowercase for analysis
+    x_name_lower = x_name.lower()
+    question_lower = question.lower()
+
+    # Calculate unique values for analysis
+    unique_x_values = len(set(str(x) for x in x_data))
+    unique_y_values = len(set(str(y) for y in y_data))
+
+    # 1. Time series analysis
+    time_keywords = [
+        "month",
+        "date",
+        "year",
+        "time",
+        "day",
+        "week",
+        "quarter",
+        "ym",
+        "ymd",
+    ]
+    if any(keyword in x_name_lower for keyword in time_keywords):
+        # For quarterly data with few points, prefer bar chart
+        if "quarter" in x_name_lower and unique_x_values <= 4:
+            return "bar"
+        # For other time data, use line chart
+        return "line"
+
+    # 2. Question context analysis
+    if any(
+        keyword in question_lower
+        for keyword in ["trend", "over time", "timeline", "progression"]
+    ):
+        return "line"
+
+    if any(
+        keyword in question_lower
+        for keyword in ["correlation", "relationship", "scatter", "compare"]
+    ):
+        return "scatter"
+
+    if any(
+        keyword in question_lower
+        for keyword in ["distribution", "proportion", "percentage", "share"]
+    ):
+        return "pie"
+
+    # 3. Data distribution analysis
+
+    # Pie chart for categorical data with few categories
+    # But exclude time-based data (quarters, months, etc.)
+    if unique_x_values <= 8 and unique_x_values >= 2:
+        # Check if Y values are numeric (for pie chart)
+        try:
+            numeric_y = [float(y) for y in y_data if y is not None]
+            if len(numeric_y) == len(y_data):  # All Y values are numeric
+                # Exclude time-based patterns
+                time_patterns = [
+                    "q1",
+                    "q2",
+                    "q3",
+                    "q4",
+                    "jan",
+                    "feb",
+                    "mar",
+                    "apr",
+                    "may",
+                    "jun",
+                    "jul",
+                    "aug",
+                    "sep",
+                    "oct",
+                    "nov",
+                    "dec",
+                    "january",
+                    "february",
+                    "march",
+                    "april",
+                    "may",
+                    "june",
+                    "july",
+                    "august",
+                    "september",
+                    "october",
+                    "november",
+                    "december",
+                ]
+
+                # Check if X data contains time patterns
+                x_data_lower = [str(x).lower() for x in x_data]
+                has_time_pattern = any(
+                    pattern in " ".join(x_data_lower) for pattern in time_patterns
+                )
+
+                if not has_time_pattern:
+                    return "pie"
+        except (ValueError, TypeError):
+            pass
+
+    # Scatter plot for correlation analysis
+    if unique_x_values > 10 and unique_y_values > 10:
+        try:
+            # Check if both X and Y are numeric
+            numeric_x = [float(x) for x in x_data if x is not None]
+            numeric_y = [float(y) for y in y_data if y is not None]
+            if len(numeric_x) == len(x_data) and len(numeric_y) == len(y_data):
+                return "scatter"
+        except (ValueError, TypeError):
+            pass
+
+    # 4. Column name analysis
+    if any(
+        keyword in x_name_lower for keyword in ["category", "type", "segment", "group"]
+    ):
+        if unique_x_values <= 6:
+            return "pie"
+        else:
+            return "bar"
+
+    # 5. Default to bar chart
+    return "bar"
+
+
+def _get_relevant_schema_context(question: str) -> str:
+    """
+    Get relevant schema context using embeddings to enhance AI prompts.
+
+    Args:
+        question: The user's natural language question
+
+    Returns:
+        Formatted string with relevant schema information
+    """
+    try:
+        # Import schema_index functions
+        from .schema_index import find_similar_questions, find_similar_schema
+
+        # Get similar schema elements
+        similar_schema = find_similar_schema(question, n_results=5)
+
+        # Get similar questions for context
+        similar_questions = find_similar_questions(question, n_results=3)
+
+        context_parts = []
+
+        # Add relevant schema information
+        if similar_schema:
+            context_parts.append("Relevant Schema Elements:")
+            for item in similar_schema:
+                if item.get("document"):
+                    context_parts.append(f"- {item['document']}")
+                    if item.get("metadata"):
+                        metadata = item["metadata"]
+                        if metadata.get("table_name"):
+                            context_parts.append(f"  Table: {metadata['table_name']}")
+                        if metadata.get("columns"):
+                            context_parts.append(
+                                f"  Columns: {', '.join(metadata['columns'])}"
+                            )
+
+        # Add similar questions for context
+        if similar_questions:
+            context_parts.append("\nSimilar Questions:")
+            for item in similar_questions:
+                question = item.get("question")
+                sql = item.get("sql")
+                if question and sql:
+                    context_parts.append(f"- Q: {question}")
+                    context_parts.append(f"  SQL: {sql}")
+
+        return (
+            "\n".join(context_parts)
+            if context_parts
+            else "No relevant schema context found."
+        )
+
+    except Exception as e:
+        # Fallback if embeddings are not available
+        if os.getenv("DEBUG") == "true":
+            print(f"Schema embeddings not available: {e}")
+        return "Schema embeddings not available - using full schema."
+
+
+def _fix_sql_syntax(sql: str) -> Tuple[str, bool]:
+    """Fix common SQL syntax errors using pattern-based corrections.
+
+    Returns:
+        Tuple of (fixed_sql, fixes_were_applied)
+    """
     fixes_applied = []
 
     # 1. Fix CAST syntax errors
@@ -90,10 +291,11 @@ def _fix_sql_syntax(sql: str) -> str:
     fixes_applied.extend(learned_fixes)
 
     # Debug output if fixes were applied
-    if fixes_applied and os.getenv("DEBUG", "false").lower() == "true":
+    fixes_were_applied = len(fixes_applied) > 0
+    if fixes_were_applied and os.getenv("DEBUG", "false").lower() == "true":
         print(f"SQL fixes applied: {fixes_applied}")
 
-    return sql
+    return sql, fixes_were_applied
 
 
 def _apply_learned_patterns(sql: str) -> Tuple[str, List[str]]:
@@ -393,12 +595,24 @@ def _generate_sql_with_ai(
     try:
         llm = _get_llm()
 
+        # Get relevant schema context using embeddings
+        relevant_schema_context = _get_relevant_schema_context(question)
+
+        # Combine full schema with relevant context
+        enhanced_schema_info = f"""
+        Full Database Schema:
+        {schema_info}
+        
+        Most Relevant Schema Context for this question:
+        {relevant_schema_context}
+        """
+
         # Create a comprehensive prompt for SQL generation
         system_prompt = f"""
         You are an expert SQL developer. Generate MySQL SQL queries based on natural language questions.
         
         Database Schema:
-        {schema_info}
+        {enhanced_schema_info}
         
         Rules:
         1. Only generate SELECT queries (no INSERT, UPDATE, DELETE)
@@ -450,11 +664,9 @@ def _generate_sql_with_ai(
             raise ValueError("Generated SQL is not a SELECT query")
 
         # Fix common SQL syntax errors
-        original_sql = sql
-        sql = _fix_sql_syntax(sql)
-        corrected = sql != original_sql
+        sql, corrected = _fix_sql_syntax(sql)
         if corrected and os.getenv("DEBUG", "false").lower() == "true":
-            print(f"SQL corrected: {original_sql} -> {sql}")
+            print("SQL was corrected during generation")
 
         # Basic SQL syntax validation
         if sql.count("(") != sql.count(")"):
@@ -761,9 +973,9 @@ def answer_question(question: str) -> dict:
 
             # Try to fix SQL errors and retry
             print("Attempting to fix SQL syntax...")
-            fixed_sql = _fix_sql_syntax(sql)
+            fixed_sql, fixes_applied = _fix_sql_syntax(sql)
 
-            if fixed_sql != sql:
+            if fixes_applied:
                 print(f"Fixed SQL: {fixed_sql}")
                 try:
                     rows = run_sql(fixed_sql)
@@ -845,8 +1057,15 @@ def answer_question(question: str) -> dict:
                                 break
 
                     # Chart column selection (no debug print - too verbose)
-                    x_name = x_col.lower()
-                    chart_type = "line" if x_name in ("month", "date", "ym") else "bar"
+                    # Extract data for chart type determination
+                    x_data = [row[x_col] for row in rows]
+                    y_data = [row[y_col] for row in rows]
+
+                    # Use robust chart type selection
+                    chart_type = determine_chart_type(
+                        x_data, y_data, x_col, y_col, question
+                    )
+
                     chart_json = render_chart(
                         rows, spec={"type": chart_type}, x_key=x_col, y_key=y_col
                     )
@@ -871,6 +1090,25 @@ def answer_question(question: str) -> dict:
             "sql_corrected": sql_corrected,
             "ai_fallback_error": ai_fallback_error,
         }
+
+        # Store successful query in question embeddings for future learning
+        if sql_source in ["ai", "heuristic"] and not sql_corrected:
+            try:
+                from .schema_index import store_question_embedding
+
+                store_question_embedding(
+                    question=question,
+                    sql=sql,
+                    metadata={
+                        "sql_source": sql_source,
+                        "rows_count": len(rows),
+                        "has_chart": chart_json is not None,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    },
+                )
+            except Exception as e:
+                if os.getenv("DEBUG") == "true":
+                    print(f"Failed to store question embedding: {e}")
 
         set_cache(cache_key, to_jsonable(result))
         return respond(result)

@@ -89,19 +89,34 @@ def render_chart(
 
     # Create figure using lower-level Plotly API
     fig = go.Figure()
+    chart_type = spec.get("type", "bar")
 
-    if spec.get("type") == "line":
+    if chart_type == "line":
         fig.add_trace(go.Scatter(x=x_data, y=y_data, mode="lines+markers", name=y_key))
-    else:
+    elif chart_type == "pie":
+        fig.add_trace(go.Pie(labels=x_data, values=y_data, name=y_key))
+    elif chart_type == "scatter":
+        fig.add_trace(go.Scatter(x=x_data, y=y_data, mode="markers", name=y_key))
+    elif chart_type == "area":
+        fig.add_trace(
+            go.Scatter(x=x_data, y=y_data, mode="lines", fill="tonexty", name=y_key)
+        )
+    else:  # Default to bar chart
         fig.add_trace(go.Bar(x=x_data, y=y_data, name=y_key))
 
-    # Update layout
-    fig.update_layout(
-        title=f"{y_key} by {x_key}",
-        xaxis_title=x_key,
-        yaxis_title=y_key,
-        showlegend=False,
-    )
+    # Update layout based on chart type
+    if chart_type == "pie":
+        fig.update_layout(
+            title=f"{y_key} by {x_key}",
+            showlegend=True,
+        )
+    else:
+        fig.update_layout(
+            title=f"{y_key} by {x_key}",
+            xaxis_title=x_key,
+            yaxis_title=y_key,
+            showlegend=False,
+        )
 
     return fig.to_dict()
 

@@ -154,10 +154,16 @@ def find_similar_schema(query: str, n_results: int = 3) -> List[Dict[str, Any]]:
         include=["documents", "metadatas", "distances"],
     )
 
+    # Handle case where no results are found
+    if not results["documents"] or not results["documents"][0]:
+        return []
+
     return [
-        {"document": doc, "metadata": meta, "distance": dist}
+        {"document": doc, "metadata": meta or {}, "distance": dist}
         for doc, meta, dist in zip(
-            results["documents"][0], results["metadatas"][0], results["distances"][0]
+            results["documents"][0],
+            results["metadatas"][0] if results["metadatas"] else [],
+            results["distances"][0] if results["distances"] else [],
         )
     ]
 
@@ -176,15 +182,21 @@ def find_similar_questions(query: str, n_results: int = 3) -> List[Dict[str, Any
         include=["documents", "metadatas", "distances"],
     )
 
+    # Handle case where no results are found
+    if not results["documents"] or not results["documents"][0]:
+        return []
+
     return [
         {
             "question": doc,
-            "sql": meta.get("sql", ""),
-            "metadata": meta,
+            "sql": meta.get("sql", "") if meta else "",
+            "metadata": meta or {},
             "distance": dist,
         }
         for doc, meta, dist in zip(
-            results["documents"][0], results["metadatas"][0], results["distances"][0]
+            results["documents"][0],
+            results["metadatas"][0] if results["metadatas"] else [],
+            results["distances"][0] if results["distances"] else [],
         )
     ]
 

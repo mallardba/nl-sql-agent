@@ -3,6 +3,13 @@ from typing import AsyncGenerator
 
 import pytest
 
+
+# Configure pytest to ignore temp directory
+def pytest_ignore_collect(collection_path):
+    """Ignore collection of test files in temp directory."""
+    return str(collection_path).endswith("temp")
+
+
 try:
     from app.main import app as fastapi_app
 except Exception:
