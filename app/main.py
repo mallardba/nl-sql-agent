@@ -59,7 +59,13 @@ def ask(
     html: bool = Query(False, description="Return HTML response instead of JSON"),
 ):
     try:
-        result = answer_question(req.question.lower())
+        # Validate question before processing
+        if not req.question or not isinstance(req.question, str):
+            raise HTTPException(
+                status_code=400, detail="Question must be a non-empty string"
+            )
+
+        result = answer_question(req.question)
 
         if html:
             # Return HTML response with embedded charts and tables
@@ -91,7 +97,13 @@ def ask(
 def ask_html(question: str):
     """Simple GET endpoint for testing HTML responses in browser."""
     try:
-        result = answer_question(question.lower())
+        # Validate question before processing
+        if not question or not isinstance(question, str):
+            raise HTTPException(
+                status_code=400, detail="Question must be a non-empty string"
+            )
+
+        result = answer_question(question)
 
         html_content = create_complete_html_page(
             question=question,

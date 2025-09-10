@@ -26,6 +26,8 @@ response.html
 test_results.json
 chroma_db/
 *.log
+# Temporary test files (in tests/temp/)
+tests/temp/test_*.py
 
 # Docker
 .dockerignore
