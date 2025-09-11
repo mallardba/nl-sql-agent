@@ -300,7 +300,6 @@ def _fix_sql_syntax(sql: str) -> Tuple[str, bool]:
 
 def _apply_learned_patterns(sql: str) -> Tuple[str, List[str]]:
     """Apply learned error patterns from previous corrections."""
-    import re
 
     fixes = []
 
@@ -344,7 +343,6 @@ def _learn_from_error(sql: str, error_message: str) -> None:
 
 def _fix_cast_syntax(sql: str) -> Tuple[str, List[str]]:
     """Fix CAST syntax errors."""
-    import re
 
     fixes = []
 
@@ -363,7 +361,6 @@ def _fix_cast_syntax(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_ambiguous_columns(sql: str) -> Tuple[str, List[str]]:
     """Fix ambiguous column references by adding table aliases."""
-    import re
 
     fixes = []
 
@@ -416,7 +413,6 @@ def _fix_ambiguous_columns(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_missing_aliases(sql: str) -> Tuple[str, List[str]]:
     """Fix missing table aliases in complex queries."""
-    import re
 
     fixes = []
 
@@ -434,7 +430,6 @@ def _fix_missing_aliases(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_join_syntax(sql: str) -> Tuple[str, List[str]]:
     """Fix JOIN syntax issues."""
-    import re
 
     fixes = []
 
@@ -452,7 +447,6 @@ def _fix_join_syntax(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_groupby_syntax(sql: str) -> Tuple[str, List[str]]:
     """Fix GROUP BY syntax issues."""
-    import re
 
     fixes = []
 
@@ -480,7 +474,6 @@ def _fix_groupby_syntax(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_invalid_join_references(sql: str) -> Tuple[str, List[str]]:
     """Fix invalid JOIN references like COUNT(JOIN.id)."""
-    import re
 
     fixes = []
 
@@ -518,7 +511,6 @@ def _fix_invalid_join_references(sql: str) -> Tuple[str, List[str]]:
 
 def _fix_missing_columns(sql: str) -> Tuple[str, List[str]]:
     """Fix references to non-existent columns by calculating them properly."""
-    import re
 
     fixes = []
 
@@ -861,7 +853,6 @@ def _generate_recent_orders_query(q: str) -> str:
 
 def _extract_limit(q: str, default: int = 10) -> int:
     """Extract limit number from question."""
-    import re
 
     # Look for patterns like "top 5", "best 10", "first 3"
     patterns = [

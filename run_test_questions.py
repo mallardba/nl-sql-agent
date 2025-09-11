@@ -45,6 +45,11 @@ TEST_QUESTIONS = {
         "Payment method preferences",
         "Return rates by product category",
         "Employee performance metrics",
+        "What percentage of total revenue comes from each product category?",
+        "How is our customer base distributed by region?",
+        "What's the breakdown of order statuses (completed, pending, cancelled)?",
+        "Which product categories make up our total sales?",
+        "How are our customers distributed by segment?",
     ],
     "Advanced Analytics": [
         "Revenue growth rate month over month",

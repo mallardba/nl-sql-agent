@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional
 # Keep this file for future custom specs and formatting.
 
 
-def create_html_table(rows: List[Dict[str, Any]], title: str = "Query Results") -> str:
+def create_html_table(
+    rows: List[Dict[str, Any]], title: str = "Query Results", question: str = ""
+) -> str:
     """Convert SQL results to an HTML table."""
     if not rows or len(rows) == 0:
         return f"<h3>{title}</h3><p>No results found.</p>"
@@ -20,7 +22,12 @@ def create_html_table(rows: List[Dict[str, Any]], title: str = "Query Results") 
     # Start building HTML
     html = f"""
     <div class="table-container">
-        <h3>{title}</h3>
+        <div class="table-header">
+            <h3>{title}</h3>
+            <button class="export-btn" onclick="exportToCSV()" title="Export to CSV">
+                📊 Export CSV
+            </button>
+        </div>
         <table class="data-table">
             <thead>
                 <tr>
@@ -57,6 +64,58 @@ def create_html_table(rows: List[Dict[str, Any]], title: str = "Query Results") 
             </tbody>
         </table>
     </div>
+    
+    <script>
+        function exportToCSV() {
+            // Use embedded results data instead of re-querying
+            const results = window.queryResults || [];
+            
+            if (results.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            // Send results data to export endpoint
+            console.log('Starting export with data:', results);
+            
+            fetch('/export/csv', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ results: results })
+            })
+            .then(response => {
+                console.log('Export response status:', response.status);
+                console.log('Export response headers:', response.headers);
+                
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Export error response:', text);
+                        throw new Error(`Export failed: ${response.status} - ${text}`);
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('Export blob received:', blob.size, 'bytes');
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'query_results.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                console.log('Export download initiated');
+            })
+            .catch(error => {
+                console.error('Export error:', error);
+                alert('Export failed: ' + error.message);
+            });
+        }
+    </script>
     """
 
     return html
@@ -77,7 +136,17 @@ def create_html_chart(chart_data: Dict[str, Any], title: str = "Chart") -> str:
         <script>
             Plotly.newPlot('chart-{hash(title)}', {chart_json}.data, {chart_json}.layout, {{
                 responsive: true,
-                displayModeBar: true
+                displayModeBar: true,
+                modeBarButtonsToAdd: ['zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d'],
+                modeBarButtonsToRemove: [],
+                displaylogo: false,
+                toImageButtonOptions: {{
+                    format: 'png',
+                    filename: 'chart',
+                    height: 500,
+                    width: 700,
+                    scale: 1
+                }}
             }});
         </script>
     </div>
@@ -114,10 +183,13 @@ def create_complete_html_page(
         # Safely handle table data
         table_html = ""
         try:
-            table_html = create_html_table(rows, "Query Results")
+            table_html = create_html_table(rows, "Query Results", question)
         except Exception as table_error:
             print(f"Table generation error: {table_error}")
             table_html = "<p>Table could not be generated.</p>"
+
+        # Embed results data as JSON for export functionality
+        results_json = json.dumps(rows) if rows else "[]"
 
         html = f"""
         <!DOCTYPE html>
@@ -190,6 +262,29 @@ def create_complete_html_page(
                 .data-table tr:hover {{
                     background-color: #f7fafc;
                 }}
+                .table-header {{
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }}
+                .export-btn {{
+                    background: #4299e1;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: background-color 0.2s;
+                }}
+                .export-btn:hover {{
+                    background: #3182ce;
+                }}
+                .export-btn:active {{
+                    background: #2c5282;
+                }}
                 .chart-container {{
                     margin-top: 20px;
                 }}
@@ -197,6 +292,13 @@ def create_complete_html_page(
                     min-height: 400px;
                     border: 1px solid #e2e8f0;
                     border-radius: 5px;
+                    overflow: visible;
+                    position: relative;
+                }}
+                .plotly-chart .modebar {{
+                    top: 10px !important;
+                    right: 10px !important;
+                    z-index: 1000 !important;
                 }}
                 h1, h2, h3 {{
                     color: #2d3748;
@@ -235,6 +337,11 @@ def create_complete_html_page(
                 
                 {chart_html}
             </div>
+            
+            <!-- Embedded results data for export -->
+            <script>
+                window.queryResults = {results_json};
+            </script>
         </body>
         </html>
         """

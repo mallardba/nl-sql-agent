@@ -27,6 +27,7 @@ test_results.json
 chroma_db/
 *.log
 tests/temp/test_*.py
+FASTAPI_CACHE_EXPLANATION.md
 
 # Docker
 .dockerignore

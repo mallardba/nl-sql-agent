@@ -1,3 +1,5 @@
+import csv
+import io
 import os
 from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
@@ -137,3 +139,42 @@ def to_jsonable(x):
 
 def respond(payload):
     return jsonable_encoder(payload)  # use for all returns
+
+
+def export_to_csv(
+    rows: List[Dict[str, Any]], filename: str = "query_results.csv"
+) -> str:
+    """Convert SQL results to CSV format and return as string."""
+    if not rows:
+        return ""
+
+    # Create a StringIO buffer to write CSV data
+    output = io.StringIO()
+
+    # Get column headers from first row
+    fieldnames = list(rows[0].keys())
+
+    # Create CSV writer
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+
+    # Write header row
+    writer.writeheader()
+
+    # Write data rows
+    for row in rows:
+        # Convert any non-serializable values to strings
+        csv_row = {}
+        for key, value in row.items():
+            if value is None:
+                csv_row[key] = ""
+            elif isinstance(value, (int, float)):
+                csv_row[key] = value
+            else:
+                csv_row[key] = str(value)
+        writer.writerow(csv_row)
+
+    # Get the CSV content
+    csv_content = output.getvalue()
+    output.close()
+
+    return csv_content

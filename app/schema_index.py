@@ -6,6 +6,7 @@ Schema indexing with embeddings using ChromaDB.
 Step 1: Basic ChromaDB setup and embedding functions.
 """
 
+import hashlib
 import os
 from typing import Any, Dict, List, Optional
 
@@ -69,9 +70,8 @@ def create_embedding(text: str) -> List[float]:
     Create embedding for text using a simple hash-based approach.
     This is a placeholder - in production you would use OpenAI embeddings.
     """
-    # Simple hash-based embedding for now
+    # Simple hash-based embedding for now (hashlib)
     # In production, replace this with OpenAI embeddings
-    import hashlib
 
     # Create a hash of the text
     hash_obj = hashlib.md5(text.encode())
