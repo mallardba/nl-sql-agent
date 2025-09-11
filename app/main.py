@@ -3,10 +3,10 @@ import time
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, Response
-from pydantic import BaseModel
 
 from .agent import answer_question
 from .charts import create_complete_html_page
+from .models import AskRequest, ExportRequest
 from .schema_index import get_embedding_stats, initialize_schema_embeddings
 from .tools import export_to_csv, get_schema_metadata
 
@@ -14,14 +14,6 @@ from .tools import export_to_csv, get_schema_metadata
 DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"
 
 app = FastAPI(title="NL-SQL Agent", version="0.1.0")
-
-
-class AskRequest(BaseModel):
-    question: str
-
-
-class ExportRequest(BaseModel):
-    results: list
 
 
 @app.get("/healthz")
