@@ -10,6 +10,14 @@ from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 
 from .cache import get_cache, set_cache
+from .error_logger import log_ai_error
+from .learning import (
+    categorize_query,
+    get_query_suggestions,
+    get_related_questions,
+    record_error_metrics,
+    record_query_metrics,
+)
 from .tools import get_schema_metadata, render_chart, respond, run_sql, to_jsonable
 
 # LangChain imports (will be available after pip install)
@@ -17,6 +25,12 @@ try:
     # from langchain.prompts import ChatPromptTemplate
     from langchain.schema import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
+
+    from .schema_index import (
+        find_similar_questions,
+        find_similar_schema,
+        store_question_embedding,
+    )
 
     LANGCHAIN_AVAILABLE = True
 except ImportError:
@@ -201,8 +215,6 @@ def _get_relevant_schema_context(question: str) -> str:
         Formatted string with relevant schema information
     """
     try:
-        # Import schema_index functions
-        from .schema_index import find_similar_questions, find_similar_schema
 
         # Get similar schema elements
         similar_schema = find_similar_schema(question, n_results=5)
@@ -618,13 +630,21 @@ def _generate_sql_with_ai(
            - "last quarter" = INTERVAL 3 MONTH  
            - "last month" = INTERVAL 1 MONTH
            - "last 6 months" = INTERVAL 6 MONTH
+           - For quarterly data, ALWAYS use: CONCAT(YEAR(date_column), '-Q', QUARTER(date_column)) AS quarter
+           - For monthly data, use: DATE_FORMAT(date_column, '%Y-%m') AS month
+           - NEVER use DATE_FORMAT with '%Y-Q%q' as it creates malformed output like '2024-Qq'
+           - The correct quarterly format is: CONCAT(YEAR(o.order_date), '-Q', QUARTER(o.order_date))
         8. Use aggregate functions (SUM, COUNT, AVG) when appropriate
         9. When using CAST(), always specify the data type: CAST(expression AS DECIMAL(10,2))
         10. Ensure all parentheses are properly closed
         11. Test your SQL syntax before returning
         
         Return only the raw SQL query without any markdown formatting, code blocks, or explanations.
-        Example: SELECT * FROM table WHERE id = 1;
+        
+        Examples:
+        - Basic query: SELECT * FROM table WHERE id = 1;
+        - Quarterly data: SELECT CONCAT(YEAR(o.order_date), '-Q', QUARTER(o.order_date)) AS quarter, SUM(amount) FROM orders o GROUP BY quarter;
+        - Monthly data: SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, SUM(amount) FROM orders o GROUP BY month;
         """
 
         messages = [
@@ -699,6 +719,18 @@ def _heuristic_sql_fallback(question: str) -> str:
         {"keywords": ["sales", "month"], "generator": _generate_monthly_sales_query},
         {"keywords": ["monthly", "sales"], "generator": _generate_monthly_sales_query},
         {"keywords": ["revenue", "trend"], "generator": _generate_monthly_sales_query},
+        {
+            "keywords": ["quarterly", "quarter"],
+            "generator": _generate_quarterly_sales_query,
+        },
+        {
+            "keywords": ["sales", "quarter"],
+            "generator": _generate_quarterly_sales_query,
+        },
+        {
+            "keywords": ["revenue", "quarter"],
+            "generator": _generate_quarterly_sales_query,
+        },
         # Customer patterns
         {"keywords": ["top", "customer"], "generator": _generate_customer_query},
         {
@@ -769,6 +801,22 @@ def _generate_monthly_sales_query(q: str) -> str:
         "WHERE o.status <> 'CANCELLED' AND "
         f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
         "GROUP BY month ORDER BY month;"
+    )
+
+
+def _generate_quarterly_sales_query(q: str) -> str:
+    """Generate quarterly sales queries."""
+    n = _months_from_question(q, default=12)  # Default to 12 months for quarterly data
+
+    return (
+        "SELECT CONCAT(YEAR(o.order_date), '-Q', QUARTER(o.order_date)) AS quarter, "
+        "CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS total_sales "
+        "FROM orders o "
+        "JOIN order_items oi ON oi.order_id = o.id "
+        "WHERE o.status <> 'CANCELLED' AND "
+        f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
+        "GROUP BY YEAR(o.order_date), QUARTER(o.order_date) "
+        "ORDER BY YEAR(o.order_date), QUARTER(o.order_date);"
     )
 
 
@@ -874,6 +922,8 @@ def _extract_limit(q: str, default: int = 10) -> int:
 
 def answer_question(question: str) -> dict:
     """Answer a natural language question using AI-powered SQL generation."""
+    start_time = time.time()
+
     # Validate input more thoroughly
     if question is None:
         return {
@@ -926,6 +976,9 @@ def answer_question(question: str) -> dict:
             },
         }
 
+    # Categorize the query for better pattern recognition
+    category, confidence, category_metadata = categorize_query(question)
+
     q = question.lower()
     cache_key = f"q::{q.strip()}"
     cached = get_cache(cache_key)
@@ -933,6 +986,8 @@ def answer_question(question: str) -> dict:
         # Add source info for cached results
         cached["sql_source"] = "cache"
         cached["sql_corrected"] = False
+        cached["query_category"] = category
+        cached["category_confidence"] = confidence
         return cached
 
     try:
@@ -1085,7 +1140,6 @@ def answer_question(question: str) -> dict:
         # Store successful query in question embeddings for future learning
         if sql_source in ["ai", "heuristic"] and not sql_corrected:
             try:
-                from .schema_index import store_question_embedding
 
                 store_question_embedding(
                     question=question,
@@ -1100,6 +1154,30 @@ def answer_question(question: str) -> dict:
             except Exception as e:
                 if os.getenv("DEBUG") == "true":
                     print(f"Failed to store question embedding: {e}")
+
+        # Record learning metrics
+        response_time = time.time() - start_time
+        result["query_category"] = category
+        result["category_confidence"] = confidence
+        result["response_time"] = response_time
+
+        # Get query suggestions and related questions
+        try:
+            similar_queries = find_similar_questions(question, n_results=3)
+            result["query_suggestions"] = get_query_suggestions(
+                question, category, n_suggestions=3
+            )
+            result["related_questions"] = get_related_questions(
+                question, similar_queries
+            )
+        except Exception as e:
+            if os.getenv("DEBUG") == "true":
+                print(f"Failed to get query suggestions: {e}")
+            result["query_suggestions"] = []
+            result["related_questions"] = []
+
+        # Record metrics for learning
+        record_query_metrics(question, result, response_time)
 
         set_cache(cache_key, to_jsonable(result))
         return respond(result)
@@ -1119,6 +1197,21 @@ def answer_question(question: str) -> dict:
             }
         print(f"Error in answer_question: {e}")
         print(f"Error details: {error_details}")
+
+        # Log AI error with full context
+        log_ai_error(
+            question=question,
+            sql=error_details.get("generated_sql", ""),
+            error_message=str(e),
+            error_type="ai_generation_exception",
+            additional_context={
+                "error_details": error_details,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+
+        # Record error metrics
+        record_error_metrics("ai_generation_exception", str(e))
 
         # Try heuristic fallback
         try:

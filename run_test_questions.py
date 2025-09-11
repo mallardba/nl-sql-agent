@@ -263,7 +263,7 @@ def run_all_tests():
 
     # Check if server is running
     try:
-        health_response = requests.get(f"{BASE_URL}/healthz", timeout=5)
+        health_response = requests.get(f"{BASE_URL}/health", timeout=5)
         if health_response.status_code != 200:
             print(
                 "❌ Server is not running. Please start with: python -m uvicorn app.main:app --reload"

@@ -189,7 +189,7 @@ http://localhost:8000/ask-html?question=sales%20by%20month
 - `POST /ask?html=true` → `{ question }` -> HTML response with charts and tables
 - `GET  /ask-html?question=...` → HTML response for browser testing
 - `GET  /schema` → schema metadata
-- `GET  /healthz` → health check
+- `GET  /health` → health check
 - `GET  /embeddings/status` → embeddings system status
 - `POST /embeddings/initialize` → initialize schema embeddings
 
@@ -267,7 +267,7 @@ Initialize schema embeddings from database schema.
 }
 ```
 
-#### GET /healthz
+#### GET /health
 Health check endpoint.
 
 **Response**
@@ -291,7 +291,7 @@ nl-sql-agent/
 │  └─ init.sql         # Example schema + seed data
 ├─ tests/
 │  ├─ test_ask_endpoint.py
-│  ├─ test_healthz.py
+│  ├─ test_health.py
 │  ├─ test_schema_loaded.py
 │  ├─ test_sql_generation.py
 │  └─ test_end_to_end.py
@@ -332,7 +332,7 @@ nl-sql-agent/
 ## NL–SQL Agent: Master Checklist
 
 ### MVP (Minmum Viable Product)
-- [ ] FastAPI app with `/ask`, `/schema`, `/healthz`
+- [ ] FastAPI app with `/ask`, `/schema`, `/health`
 - [ ] SQLAlchemy connection + MySQL 8 seed (db/init.sql)
 - [ ] NL → SQL draft (rule-based/LLM stub), execute, return rows
 

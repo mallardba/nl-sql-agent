@@ -60,26 +60,26 @@ Building a robust Natural Language to SQL agent that converts business questions
 - **Query Expansion** - Suggest related questions and clarifications
 - **Learning Metrics** - Track improvement over time
 
-### Step 9: User Feedback System
-**Priority: HIGH** 📝
-- **Feedback Collection** - Rate SQL accuracy and results (1-5 stars)
-- **Feedback Loop Integration** - Use ratings to improve AI responses
-- **Quality Metrics Dashboard** - Track accuracy trends and improvements
-- **User Preference Learning** - Adapt to individual user patterns
-
-### Step 10: Production Deployment
+### Step 9: Production Deployment
 **Priority: HIGH** 🚀
 - **Live Deployment** - Deploy to Heroku/Railway for demo purposes
 - **Production Configuration** - Environment variables, security settings
 - **Health Checks** - API monitoring and status endpoints
 - **Performance Monitoring** - Response time tracking and optimization
 
-### Step 11: Resume & Portfolio Preparation
+### Step 10: Resume & Portfolio Preparation
 **Priority: HIGH** 📄
 - **Technical Documentation** - Architecture diagrams and technical challenges
 - **Demo Video** - 2-minute showcase of key features
 - **Resume Integration** - Technical talking points and achievements
 - **Portfolio Entry** - GitHub README with live demo links
+
+### Step 11: User Feedback System
+**Priority: HIGH** 📝
+- **Feedback Collection** - Rate SQL accuracy and results (1-5 stars)
+- **Feedback Loop Integration** - Use ratings to improve AI responses
+- **Quality Metrics Dashboard** - Track accuracy trends and improvements
+- **User Preference Learning** - Adapt to individual user patterns
 
 ### Step 12: Performance Optimization
 **Priority: MEDIUM** ⚡
@@ -107,9 +107,9 @@ Building a robust Natural Language to SQL agent that converts business questions
 ## 🎯 IMMEDIATE NEXT STEPS
 
 1. **Step 8: Enhanced Learning System** - Improve pattern recognition and query categorization
-2. **Step 9: User Feedback System** - Add rating and feedback collection
-3. **Step 10: Production Deployment** - Deploy live for demo purposes
-4. **Step 11: Resume & Portfolio** - Document achievements and create demo materials
+2. **Step 9: Production Deployment** - Deploy live for demo purposes
+3. **Step 10: Resume & Portfolio** - Document achievements and create demo materials
+4. **Step 11: User Feedback System** - Add rating and feedback collection
 
 ---
 
