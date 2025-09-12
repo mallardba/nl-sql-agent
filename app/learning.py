@@ -410,17 +410,26 @@ class QueryExpander:
             ]
             suggestions.extend(general_suggestions[: n_suggestions - len(suggestions)])
 
-        return suggestions[:n_suggestions]
+        # Filter out the current question to avoid redundancy
+        filtered_suggestions = [
+            s for s in suggestions if s.lower().strip() != question.lower().strip()
+        ]
+
+        return filtered_suggestions[:n_suggestions]
 
     def get_related_questions(
         self, question: str, similar_queries: List[Dict[str, Any]]
     ) -> List[str]:
         """Get related questions based on similar queries in the database."""
         related = []
+        seen_questions = set()
 
         for query_info in similar_queries[:3]:  # Top 3 similar
             if query_info.get("question") and query_info["question"] != question:
-                related.append(query_info["question"])
+                question_text = query_info["question"].lower().strip()
+                if question_text not in seen_questions:
+                    related.append(query_info["question"])
+                    seen_questions.add(question_text)
 
         return related
 
