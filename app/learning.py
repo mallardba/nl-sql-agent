@@ -6,7 +6,7 @@ Implements query categorization, pattern recognition, and learning metrics.
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple
 
-from .cache import get_cache, set_cache
+from .cache import delete_cache, get_cache, set_cache
 
 
 class QueryCategorizer:
@@ -172,21 +172,37 @@ class LearningMetrics:
             "accuracy_by_source": {"ai": 0, "heuristic": 0, "cache": 0},
         }
 
-    def record_query(self, question: str, result: Dict[str, Any], response_time: float):
+    def record_query(
+        self,
+        question: str,
+        result: Dict[str, Any],
+        response_time: float,
+        is_ai_attempt: bool = False,
+    ):
         """Record a query and its result for learning metrics."""
+        # Track AI attempts separately
+        if is_ai_attempt:
+            if "ai_attempts" not in self.metrics:
+                self.metrics["ai_attempts"] = 0
+            self.metrics["ai_attempts"] += 1
+            return  # Don't record anything else for AI attempts
+
+        # Record final query result
         self.metrics["total_queries"] += 1
         self.metrics["response_times"].append(response_time)
 
-        # Track success - check if we have rows and no error details
-        has_rows = result.get("rows") is not None and len(result.get("rows", [])) > 0
-        has_error = "error_details" in result
-        is_successful = has_rows and not has_error
+        # Track success - use same criteria as test suite: SQL executed without throwing exception
+        # Success = not an error response (sql_source != "error") and no critical error details
+        sql_source = result.get("sql_source", "unknown")
+        has_critical_error = "error_details" in result and result.get(
+            "error_details", {}
+        ).get("type") in ["complete_failure", "sql_execution_error"]
+        is_successful = sql_source != "error" and not has_critical_error
 
         if is_successful:
             self.metrics["successful_queries"] += 1
 
-        # Track source
-        sql_source = result.get("sql_source", "unknown")
+        # Track source (sql_source already defined above)
         if sql_source == "ai":
             self.metrics["ai_generated"] += 1
         elif sql_source == "heuristic":
@@ -196,7 +212,14 @@ class LearningMetrics:
 
         # Track source totals for accuracy calculation
         if "source_totals" not in self.metrics:
-            self.metrics["source_totals"] = {"ai": 0, "heuristic": 0, "cache": 0}
+            self.metrics["source_totals"] = {
+                "ai": 0,
+                "heuristic": 0,
+                "cache": 0,
+                "error": 0,
+            }
+        if sql_source not in self.metrics["source_totals"]:
+            self.metrics["source_totals"][sql_source] = 0
         self.metrics["source_totals"][sql_source] += 1
 
         # Track corrections
@@ -250,6 +273,15 @@ class LearningMetrics:
                 metrics["sql_corrected"] / metrics["total_queries"]
             )
             metrics["cache_hit_rate"] = metrics["cache_hits"] / metrics["total_queries"]
+
+            # Add AI attempts info
+            metrics["ai_attempts"] = metrics.get("ai_attempts", 0)
+            metrics["ai_failure_rate"] = (
+                (metrics["ai_attempts"] - metrics["ai_generated"])
+                / metrics["ai_attempts"]
+                if metrics.get("ai_attempts", 0) > 0
+                else 0
+            )
 
             if metrics["response_times"]:
                 metrics["avg_response_time"] = sum(metrics["response_times"]) / len(
@@ -306,6 +338,25 @@ class LearningMetrics:
         cached = get_cache("learning_metrics")
         if cached:
             self.metrics.update(cached)
+
+    def clear_metrics(self):
+        """Clear all learning metrics (useful for testing)."""
+        self.metrics = {
+            "total_queries": 0,
+            "successful_queries": 0,
+            "ai_generated": 0,
+            "heuristic_fallback": 0,
+            "sql_corrected": 0,
+            "cache_hits": 0,
+            "error_patterns": defaultdict(int),
+            "category_performance": defaultdict(lambda: {"total": 0, "successful": 0}),
+            "query_complexity": defaultdict(int),
+            "response_times": [],
+            "accuracy_by_source": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
+            "source_totals": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
+        }
+        # Clear from cache too
+        delete_cache("learning_metrics")
 
 
 class QueryExpander:
@@ -388,9 +439,14 @@ def categorize_query(question: str) -> Tuple[str, float, Dict[str, Any]]:
     return _categorizer.categorize_query(question)
 
 
-def record_query_metrics(question: str, result: Dict[str, Any], response_time: float):
+def record_query_metrics(
+    question: str,
+    result: Dict[str, Any],
+    response_time: float,
+    is_ai_attempt: bool = False,
+):
     """Record query metrics using the global metrics tracker."""
-    _metrics.record_query(question, result, response_time)
+    _metrics.record_query(question, result, response_time, is_ai_attempt)
     _metrics.save_metrics()
 
 
@@ -398,6 +454,11 @@ def record_error_metrics(error_type: str, error_message: str):
     """Record error metrics using the global metrics tracker."""
     _metrics.record_error(error_type, error_message)
     _metrics.save_metrics()
+
+
+def clear_learning_metrics():
+    """Clear all learning metrics (useful for testing)."""
+    _metrics.clear_metrics()
 
 
 def get_learning_metrics() -> Dict[str, Any]:

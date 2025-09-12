@@ -926,7 +926,7 @@ def answer_question(question: str) -> dict:
 
     # Validate input more thoroughly
     if question is None:
-        return {
+        error_result = {
             "answer_text": "Error: Question cannot be None",
             "sql": "",
             "rows": [],
@@ -940,10 +940,17 @@ def answer_question(question: str) -> dict:
                 "received_value": "None",
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             },
+            "query_category": "unknown",
+            "category_confidence": 0.0,
+            "response_time": time.time() - start_time,
         }
+        record_query_metrics(
+            "None", error_result, error_result["response_time"], is_ai_attempt=False
+        )
+        return error_result
 
     if not isinstance(question, str):
-        return {
+        error_result = {
             "answer_text": f"Error: Invalid question input. Received: {type(question).__name__} - {question}",
             "sql": "",
             "rows": [],
@@ -957,10 +964,20 @@ def answer_question(question: str) -> dict:
                 "received_value": str(question),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             },
+            "query_category": "unknown",
+            "category_confidence": 0.0,
+            "response_time": time.time() - start_time,
         }
+        record_query_metrics(
+            str(question),
+            error_result,
+            error_result["response_time"],
+            is_ai_attempt=False,
+        )
+        return error_result
 
     if not question.strip():
-        return {
+        error_result = {
             "answer_text": "Error: Question cannot be empty",
             "sql": "",
             "rows": [],
@@ -974,7 +991,14 @@ def answer_question(question: str) -> dict:
                 "received_value": repr(question),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             },
+            "query_category": "unknown",
+            "category_confidence": 0.0,
+            "response_time": time.time() - start_time,
         }
+        record_query_metrics(
+            question, error_result, error_result["response_time"], is_ai_attempt=False
+        )
+        return error_result
 
     # Categorize the query for better pattern recognition
     category, confidence, category_metadata = categorize_query(question)
@@ -988,6 +1012,12 @@ def answer_question(question: str) -> dict:
         cached["sql_corrected"] = False
         cached["query_category"] = category
         cached["category_confidence"] = confidence
+
+        # Record cache hit metrics
+        response_time = time.time() - start_time
+        cached["response_time"] = response_time
+        record_query_metrics(question, cached, response_time, is_ai_attempt=False)
+
         return cached
 
     try:
@@ -999,6 +1029,23 @@ def answer_question(question: str) -> dict:
 
         # Track if this was a fallback due to AI failure
         ai_fallback_error = sql_source == "heuristic_fallback"
+
+        # Record AI attempt (even if it failed and fell back to heuristic)
+        if sql_source in ["ai", "heuristic_fallback"]:
+            # This was an AI attempt, record it
+            ai_attempt_result = {
+                "answer_text": "AI attempt (may have failed)",
+                "sql": sql,
+                "rows": [],
+                "chart_json": None,
+                "sql_source": "ai",  # Always record as AI attempt
+                "sql_corrected": False,
+                "ai_fallback_error": ai_fallback_error,
+                "query_category": category,
+                "category_confidence": confidence,
+                "response_time": 0,  # Will be updated later
+            }
+            record_query_metrics(question, ai_attempt_result, 0, is_ai_attempt=True)
 
         # Execute the SQL with error handling
         try:
@@ -1176,8 +1223,9 @@ def answer_question(question: str) -> dict:
             result["query_suggestions"] = []
             result["related_questions"] = []
 
-        # Record metrics for learning
-        record_query_metrics(question, result, response_time)
+        # Record metrics for learning (only if this wasn't already recorded as AI attempt)
+        if sql_source != "heuristic_fallback":
+            record_query_metrics(question, result, response_time, is_ai_attempt=False)
 
         set_cache(cache_key, to_jsonable(result))
         return respond(result)
@@ -1286,7 +1334,15 @@ def answer_question(question: str) -> dict:
                 "sql_corrected": sql_corrected,
                 "ai_fallback_error": True,  # This is a fallback due to AI failure
                 "error_details": error_details,  # Include the original error details
+                "query_category": category,
+                "category_confidence": confidence,
+                "response_time": time.time() - start_time,
             }
+
+            # Record the successful heuristic fallback
+            record_query_metrics(
+                question, result, result["response_time"], is_ai_attempt=False
+            )
 
             set_cache(cache_key, to_jsonable(result))
             return respond(result)
@@ -1294,7 +1350,7 @@ def answer_question(question: str) -> dict:
         except Exception as heuristic_error:
             print(f"Heuristic fallback also failed: {heuristic_error}")
             # Return error response with both error details
-            return {
+            error_result = {
                 "answer_text": f"Error processing question: {str(e)}",
                 "sql": "",
                 "rows": [],
@@ -1311,7 +1367,20 @@ def answer_question(question: str) -> dict:
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     },
                 },
+                "query_category": category,
+                "category_confidence": confidence,
+                "response_time": time.time() - start_time,
             }
+
+            # Record error metrics
+            record_query_metrics(
+                question,
+                error_result,
+                error_result["response_time"],
+                is_ai_attempt=False,
+            )
+
+            return error_result
 
 
 def _months_from_question(q: str, default=3):

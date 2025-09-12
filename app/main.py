@@ -6,8 +6,13 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from .agent import answer_question
 from .charts import create_complete_html_page
-from .error_logger import get_error_logs, get_error_summary
-from .learning import get_learning_metrics
+from .error_logger import (
+    clear_error_logs,
+    get_error_logs,
+    get_error_summary,
+    get_log_stats,
+)
+from .learning import clear_learning_metrics, get_learning_metrics
 from .models import AskRequest, ExportRequest
 from .schema_index import get_embedding_stats, initialize_schema_embeddings
 from .tools import export_to_csv, get_schema_metadata
@@ -44,6 +49,13 @@ def learning_metrics():
     return get_learning_metrics()
 
 
+@app.post("/learning/clear")
+def clear_metrics():
+    """Clear all learning metrics (useful for testing)."""
+    clear_learning_metrics()
+    return {"message": "Learning metrics cleared successfully"}
+
+
 @app.get("/errors/logs")
 def error_logs(limit: int = 50):
     """Get recent AI error logs."""
@@ -54,6 +66,19 @@ def error_logs(limit: int = 50):
 def error_summary():
     """Get error summary and statistics."""
     return get_error_summary()
+
+
+@app.get("/errors/stats")
+def get_errors_stats():
+    """Get log file statistics."""
+    return get_log_stats()
+
+
+@app.post("/errors/clear")
+def clear_errors():
+    """Clear all error logs (use with caution)."""
+    clear_error_logs()
+    return {"message": "Error logs cleared successfully"}
 
 
 @app.get("/learning/dashboard", response_class=HTMLResponse)
