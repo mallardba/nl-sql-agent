@@ -39,3 +39,8 @@ def set_cache(key: str, value, ttl: Optional[int] = _TTL_SECONDS):
 
 def clear_cache():
     _store.clear()
+
+
+def delete_cache(key: str):
+    """Delete a specific key from the cache."""
+    return _store.pop(key, None) is not None

@@ -155,12 +155,57 @@ def create_html_chart(chart_data: Dict[str, Any], title: str = "Chart") -> str:
     return html
 
 
+def _create_suggestions_section(
+    query_suggestions: Optional[List[str]], related_questions: Optional[List[str]]
+) -> str:
+    """Create HTML section for query suggestions and related questions."""
+    if not query_suggestions and not related_questions:
+        return ""
+
+    suggestions_html = ""
+    if query_suggestions:
+        suggestions_list = "".join(
+            [f"<li>{suggestion}</li>" for suggestion in query_suggestions]
+        )
+        suggestions_html = f"""
+        <div class="suggestions-section">
+            <h3>💡 Query Suggestions</h3>
+            <ul class="suggestions-list">
+                {suggestions_list}
+            </ul>
+        </div>
+        """
+
+    related_html = ""
+    if related_questions:
+        related_list = "".join(
+            [f"<li>{question}</li>" for question in related_questions]
+        )
+        related_html = f"""
+        <div class="related-section">
+            <h3>🔗 Related Questions</h3>
+            <ul class="related-list">
+                {related_list}
+            </ul>
+        </div>
+        """
+
+    return f"""
+    <div class="suggestions-container">
+        {suggestions_html}
+        {related_html}
+    </div>
+    """
+
+
 def create_complete_html_page(
     question: str,
     sql: str,
     rows: List[Dict[str, Any]],
     chart_data: Optional[Dict[str, Any]] = None,
     answer_text: str = "Query executed successfully.",
+    query_suggestions: Optional[List[str]] = None,
+    related_questions: Optional[List[str]] = None,
 ) -> str:
     """Create a complete HTML page with question, SQL, results, and chart."""
 
@@ -311,6 +356,49 @@ def create_complete_html_page(
                     color: #2d5a2d;
                     margin-bottom: 20px;
                 }}
+                .suggestions-container {{
+                    margin-top: 30px;
+                    display: flex;
+                    gap: 20px;
+                    flex-wrap: wrap;
+                }}
+                .suggestions-section, .related-section {{
+                    flex: 1;
+                    min-width: 300px;
+                    background: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border-left: 4px solid #007bff;
+                }}
+                .suggestions-list, .related-list {{
+                    list-style: none;
+                    padding: 0;
+                    margin: 10px 0 0 0;
+                }}
+                .suggestions-list li, .related-list li {{
+                    background: white;
+                    margin: 8px 0;
+                    padding: 12px;
+                    border-radius: 5px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    border: 2px solid transparent;
+                }}
+                .suggestions-list li:hover, .related-list li:hover {{
+                    background: #e3f2fd;
+                    border-color: #007bff;
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                }}
+                .suggestions-list li:active, .related-list li:active {{
+                    transform: translateY(0);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }}
+                .loading {{
+                    opacity: 0.6;
+                    pointer-events: none;
+                }}
             </style>
         </head>
         <body>
@@ -336,11 +424,75 @@ def create_complete_html_page(
                 </div>
                 
                 {chart_html}
+                
+                {_create_suggestions_section(query_suggestions, related_questions)}
             </div>
             
             <!-- Embedded results data for export -->
             <script>
                 window.queryResults = {results_json};
+                
+                // Make suggestion items clickable
+                document.addEventListener('DOMContentLoaded', function() {{
+                    const suggestionItems = document.querySelectorAll('.suggestions-list li, .related-list li');
+                    
+                    suggestionItems.forEach(function(item) {{
+                        item.addEventListener('click', function() {{
+                            const question = this.textContent.trim();
+                            runSuggestionQuery(question);
+                        }});
+                    }});
+                }});
+                
+                function runSuggestionQuery(question) {{
+                    // Add loading state
+                    const container = document.querySelector('.container');
+                    container.classList.add('loading');
+                    
+                    // Show loading message
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.innerHTML = `
+                        <div style="text-align: center; padding: 20px; background: #e3f2fd; border-radius: 8px; margin: 20px 0;">
+                            <h3>🔄 Running Query...</h3>
+                            <p>"{question}"</p>
+                            <div style="margin-top: 10px;">
+                                <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #007bff; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite;"></div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(loadingDiv);
+                    
+                    // Add spin animation
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        @keyframes spin {{
+                            0% {{ transform: rotate(0deg); }}
+                            100% {{ transform: rotate(360deg); }}
+                        }}
+                    `;
+                    document.head.appendChild(style);
+                    
+                    // Make API call
+                    fetch('/ask-html?question=' + encodeURIComponent(question))
+                        .then(response => response.text())
+                        .then(html => {{
+                            // Replace the entire page content
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        }})
+                        .catch(error => {{
+                            console.error('Error running suggestion query:', error);
+                            container.classList.remove('loading');
+                            loadingDiv.innerHTML = `
+                                <div style="text-align: center; padding: 20px; background: #ffebee; border-radius: 8px; margin: 20px 0; color: #c62828;">
+                                    <h3>❌ Error</h3>
+                                    <p>Failed to run query: "${{question}}"</p>
+                                    <p>Please try again or refresh the page.</p>
+                                </div>
+                            `;
+                        }});
+                }}
             </script>
         </body>
         </html>

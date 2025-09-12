@@ -462,6 +462,8 @@ def ask(
                     answer_text=result.get(
                         "answer_text", "Query executed successfully."
                     ),
+                    query_suggestions=result.get("query_suggestions"),
+                    related_questions=result.get("related_questions"),
                 )
                 return HTMLResponse(
                     content=html_content,
@@ -498,6 +500,8 @@ def ask_html(question: str):
             rows=result.get("rows", []),
             chart_data=result.get("chart_json"),
             answer_text=result.get("answer_text", "Query executed successfully."),
+            query_suggestions=result.get("query_suggestions"),
+            related_questions=result.get("related_questions"),
         )
         return HTMLResponse(
             content=html_content, headers={"Content-Type": "text/html; charset=utf-8"}
