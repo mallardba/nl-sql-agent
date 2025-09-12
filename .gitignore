@@ -26,13 +26,14 @@ response.html
 test_results.json
 chroma_db/
 *.log
-tests/temp/test_*.py
-FASTAPI_CACHE_EXPLANATION.md
+# tests/temp/test_*.py
+# tests/temp/test_*.sh
+# FASTAPI_CACHE_EXPLANATION.md
 logs/
 
 # Generated documentation and summaries
-ACCURACY_FIXES_SUMMARY.md
-LEARNING_FIXES_SUMMARY.md
+# ACCURACY_FIXES_SUMMARY.md
+# LEARNING_FIXES_SUMMARY.md
 
 # Test files
 test_*.py
