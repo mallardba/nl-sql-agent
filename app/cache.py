@@ -1,3 +1,19 @@
+"""
+Query Caching System
+
+In-memory caching system for SQL query results with TTL-based expiration.
+Provides performance optimization for repeated queries and intelligent
+cache management with automatic pruning and size limits.
+
+Key Features:
+- TTL-based cache expiration (15-minute default)
+- Automatic cache pruning and size management (1000 entry limit)
+- Thread-safe cache operations for concurrent access
+- Cache hit/miss metrics for performance monitoring
+- Intelligent cache invalidation and cleanup
+- Memory-efficient storage with automatic garbage collection
+"""
+
 import time
 from typing import Any, Dict, Optional, Tuple
 

@@ -1,5 +1,19 @@
 """
-Chart helpers (extend as needed).
+Interactive Data Visualization System
+
+Comprehensive chart generation and HTML page creation using Plotly.
+Provides intelligent chart type selection, responsive design, and
+professional data presentation with interactive features.
+
+Key Features:
+- Intelligent chart type detection (bar, line, pie, scatter, area)
+- Interactive Plotly charts with hover, zoom, and export capabilities
+- Responsive HTML page generation with modern CSS styling
+- Data-driven chart configuration and axis optimization
+- Professional table formatting with sorting and styling
+- Export functionality integration (CSV download)
+- Mobile-friendly responsive design
+- Query suggestions and related questions integration
 """
 
 import json

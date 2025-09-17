@@ -1,3 +1,21 @@
+"""
+Database Tools & SQL Execution Engine
+
+Core database interaction layer providing SQL execution, schema management,
+and data visualization capabilities. Features connection pooling, safety
+measures, and comprehensive data processing utilities.
+
+Key Features:
+- SQLAlchemy-based database connection with connection pooling
+- Safe SQL execution with SELECT-only restrictions
+- Comprehensive schema introspection and metadata extraction
+- Interactive chart generation using Plotly
+- CSV export functionality with proper data formatting
+- Database connection management with health monitoring
+- Data type handling and serialization utilities
+- Performance optimization with connection reuse
+"""
+
 import csv
 import io
 import os

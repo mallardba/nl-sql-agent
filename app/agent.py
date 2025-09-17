@@ -1,6 +1,18 @@
 """
-Agent orchestration with LangChain integration.
-Uses OpenAI to generate SQL from natural language questions.
+AI-Powered SQL Generation Agent
+
+Core agent system that converts natural language questions into executable SQL queries.
+Features OpenAI GPT-4 integration, intelligent error correction, heuristic fallbacks,
+and comprehensive learning capabilities for continuous improvement.
+
+Key Features:
+- OpenAI GPT-4 powered SQL generation with context-aware prompting
+- Automatic SQL error detection and correction with retry mechanisms
+- Heuristic fallback system for robust query generation
+- Query categorization and pattern learning integration
+- Performance metrics tracking and learning system integration
+- Intelligent limit extraction from natural language queries
+- Comprehensive error logging and recovery mechanisms
 """
 
 import os

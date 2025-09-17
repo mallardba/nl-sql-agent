@@ -1,6 +1,20 @@
 """
-Enhanced Learning System for NL-SQL Agent.
-Implements query categorization, pattern recognition, and learning metrics.
+Adaptive Learning & Analytics System
+
+Advanced learning system that tracks query patterns, categorizes requests,
+and provides intelligent suggestions for continuous AI improvement.
+Features comprehensive metrics tracking and performance analytics.
+
+Key Features:
+- Intelligent query categorization (analytics, reporting, exploration, etc.)
+- Pattern recognition and similarity matching for related questions
+- Comprehensive learning metrics with success rate tracking
+- Query complexity analysis and performance monitoring
+- Source tracking (AI, heuristic, cache, error) for accuracy analysis
+- Intelligent query suggestions and related question generation
+- Real-time learning dashboard with visual analytics
+- Error pattern recognition and correction tracking
+- Adaptive learning with continuous improvement algorithms
 """
 
 from collections import defaultdict

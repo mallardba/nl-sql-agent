@@ -1,6 +1,19 @@
 """
-Error logging utility for AI generation exceptions.
-Logs detailed error information to files for debugging and analysis.
+AI Error Logging & Analysis System
+
+Comprehensive error tracking and analysis for AI-generated SQL queries.
+Provides detailed error logging, pattern recognition, and performance
+monitoring for continuous system improvement.
+
+Key Features:
+- Structured error logging with JSON format for easy analysis
+- Automatic log rotation to prevent disk space issues
+- Error pattern recognition and categorization
+- Performance metrics and error rate tracking
+- Detailed error summaries with statistical analysis
+- Log file management with size limits and cleanup
+- Integration with learning system for error pattern learning
+- Real-time error monitoring and alerting capabilities
 """
 
 import glob

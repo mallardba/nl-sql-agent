@@ -1,9 +1,16 @@
 """
-Build natural-language descriptions of tables/columns and embed them
-for vector search against incoming questions.
+Schema Embeddings & Learning System
 
-Schema indexing with embeddings using ChromaDB.
-Step 1: Basic ChromaDB setup and embedding functions.
+Provides intelligent context-aware SQL generation using ChromaDB vector embeddings.
+Features schema vectorization, query pattern learning, and similarity search for
+enhanced AI prompts. Includes comprehensive learning metrics and performance tracking.
+
+Key Features:
+- Schema embeddings for context-aware AI prompts
+- Query pattern learning and categorization  
+- Similarity search for related questions
+- Learning metrics dashboard with performance analytics
+- Error pattern recognition and success tracking
 """
 
 import hashlib

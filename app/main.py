@@ -1,3 +1,22 @@
+"""
+FastAPI Web Application & API Endpoints
+
+Main FastAPI application providing RESTful API endpoints for the NL-SQL Agent.
+Features comprehensive API routes, HTML visualization, learning dashboard,
+and error management with professional web interface.
+
+Key Features:
+- RESTful API endpoints for natural language to SQL conversion
+- Interactive HTML responses with embedded charts and tables
+- Learning metrics dashboard with real-time analytics
+- Error logging and management endpoints
+- Schema metadata and embeddings management
+- CSV export functionality with client-side processing
+- Health checks and system status monitoring
+- Professional web interface with responsive design
+- Comprehensive error handling and validation
+"""
+
 import os
 import time
 
