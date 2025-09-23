@@ -4,6 +4,7 @@ Template rendering utilities for HTML pages.
 Provides functions to load and format HTML templates with dynamic data.
 """
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -111,4 +112,45 @@ def format_learning_dashboard_template(
         error_html=error_html,
         complexity_html=complexity_html,
         source_html=source_html,
+    )
+
+
+def format_query_results_template(
+    question: str,
+    sql: str,
+    answer_text: str,
+    table_html: str,
+    chart_html: str,
+    suggestions_html: str,
+    rows: List[Dict[str, Any]],
+) -> str:
+    """Format the query results template with data."""
+    template = load_template("query_results.html")
+
+    # Convert rows to JSON for JavaScript
+    results_json = json.dumps(rows) if rows else "[]"
+
+    return template.format(
+        question=question,
+        sql=sql,
+        answer_text=answer_text,
+        table_html=table_html,
+        chart_html=chart_html,
+        suggestions_html=suggestions_html,
+        results_json=results_json,
+    )
+
+
+def format_error_page_template(
+    error_title: str,
+    error_message: str,
+    back_url: str = "/",
+) -> str:
+    """Format the error page template with data."""
+    template = load_template("error_page.html")
+
+    return template.format(
+        error_title=error_title,
+        error_message=error_message,
+        back_url=back_url,
     )

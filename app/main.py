@@ -34,7 +34,7 @@ from .error_logger import (
 from .learning import clear_learning_metrics, get_learning_metrics
 from .models import AskRequest, ExportRequest
 from .schema_index import get_embedding_stats, initialize_schema_embeddings
-from .templates import format_learning_dashboard_template
+from .templates import format_error_page_template, format_learning_dashboard_template
 from .tools import export_to_csv, get_schema_metadata
 
 # Global debug flag - can be set via environment variable or command line
@@ -182,15 +182,11 @@ def learning_dashboard():
 
     except Exception as e:
         return HTMLResponse(
-            content=f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
-                <h1>Error Loading Dashboard</h1>
-                <p>Failed to load learning metrics: {str(e)}</p>
-                <a href="/learning/metrics" style="color: #4f46e5;">View Raw Metrics</a>
-            </body>
-            </html>
-            """,
+            content=format_error_page_template(
+                error_title="Error Loading Dashboard",
+                error_message=f"Failed to load learning metrics: {str(e)}",
+                back_url="/learning/metrics",
+            ),
             status_code=500,
         )
 

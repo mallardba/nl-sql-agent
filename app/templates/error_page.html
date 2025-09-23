@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - NL-SQL Agent</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .error-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .error-icon {
+            font-size: 4em;
+            color: #e53e3e;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #e53e3e;
+        }
+        .back-link {
+            display: inline-block;
+            background: #4299e1;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+        .back-link:hover {
+            background: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1>{error_title}</h1>
+        <div class="error-message">
+            <strong>Error Details:</strong><br>
+            {error_message}
+        </div>
+        <a href="{back_url}" class="back-link">← Go Back</a>
+    </div>
+</body>
+</html>
