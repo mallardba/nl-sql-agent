@@ -28,17 +28,17 @@ chroma_db/
 *.log
 # tests/temp/test_*.py
 # tests/temp/test_*.sh
-# FASTAPI_CACHE_EXPLANATION.md
 logs/
-
-# Generated documentation and summaries
-# ACCURACY_FIXES_SUMMARY.md
-# LEARNING_FIXES_SUMMARY.md
 
 # Test files
 test_*.py
 test_*.sh
 test_*.bat
+
+# Coverage files
+.coverage
+coverage.xml
+htmlcov/
 
 # Temporary files
 *.tmp
