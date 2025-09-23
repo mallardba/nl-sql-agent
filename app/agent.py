@@ -1161,7 +1161,8 @@ def answer_question(question: str) -> dict:
                                 x_col = col
                                 break
 
-                    # Chart column selection (no debug print - too verbose)
+                # Generate chart if we have both x and y columns
+                if x_col and y_col:
                     # Extract data for chart type determination
                     x_data = [row[x_col] for row in rows]
                     y_data = [row[y_col] for row in rows]

@@ -17,107 +17,22 @@ Key Features:
 - Adaptive learning with continuous improvement algorithms
 """
 
-from collections import defaultdict
 from typing import Any, Dict, List, Tuple
 
 from .cache import delete_cache, get_cache, set_cache
+from .config import (
+    DEFAULT_METRICS_CONFIG,
+    GENERAL_SUGGESTIONS,
+    QUERY_CATEGORIES,
+    SUGGESTION_PATTERNS,
+)
 
 
 class QueryCategorizer:
     """Categorizes queries into different types for better pattern recognition."""
 
     def __init__(self):
-        self.categories = {
-            "analytics": {
-                "keywords": [
-                    "trend",
-                    "analysis",
-                    "compare",
-                    "correlation",
-                    "growth",
-                    "decline",
-                    "pattern",
-                ],
-                "patterns": [
-                    "over time",
-                    "year over year",
-                    "month over month",
-                    "vs",
-                    "versus",
-                ],
-            },
-            "reporting": {
-                "keywords": [
-                    "report",
-                    "summary",
-                    "overview",
-                    "dashboard",
-                    "total",
-                    "count",
-                    "sum",
-                ],
-                "patterns": [
-                    "how many",
-                    "what is the total",
-                    "show me all",
-                    "list all",
-                ],
-            },
-            "exploration": {
-                "keywords": [
-                    "find",
-                    "search",
-                    "discover",
-                    "explore",
-                    "what",
-                    "which",
-                    "where",
-                ],
-                "patterns": ["what are", "which products", "find customers", "show me"],
-            },
-            "revenue": {
-                "keywords": [
-                    "revenue",
-                    "sales",
-                    "profit",
-                    "income",
-                    "earnings",
-                    "money",
-                ],
-                "patterns": [
-                    "top products by revenue",
-                    "sales performance",
-                    "revenue growth",
-                ],
-            },
-            "customer": {
-                "keywords": ["customer", "client", "user", "buyer", "purchaser"],
-                "patterns": [
-                    "customer analysis",
-                    "customer behavior",
-                    "customer segments",
-                ],
-            },
-            "product": {
-                "keywords": ["product", "item", "inventory", "stock", "catalog"],
-                "patterns": [
-                    "product performance",
-                    "inventory levels",
-                    "product categories",
-                ],
-            },
-            "time_series": {
-                "keywords": [
-                    "monthly",
-                    "quarterly",
-                    "yearly",
-                    "daily",
-                    "weekly",
-                    "trend",
-                ],
-                "patterns": ["last year", "this quarter", "past 6 months", "over time"],
-            },
-        }
+        self.categories = QUERY_CATEGORIES
 
     def categorize_query(self, question: str) -> Tuple[str, float, Dict[str, Any]]:
         """
@@ -172,19 +87,7 @@ class LearningMetrics:
     """Tracks learning metrics and improvement over time."""
 
     def __init__(self):
-        self.metrics = {
-            "total_queries": 0,
-            "successful_queries": 0,
-            "ai_generated": 0,
-            "heuristic_fallback": 0,
-            "sql_corrected": 0,
-            "cache_hits": 0,
-            "error_patterns": defaultdict(int),
-            "category_performance": defaultdict(lambda: {"total": 0, "successful": 0}),
-            "query_complexity": defaultdict(int),
-            "response_times": [],
-            "accuracy_by_source": {"ai": 0, "heuristic": 0, "cache": 0},
-        }
+        self.metrics = DEFAULT_METRICS_CONFIG.copy()
 
     def record_query(
         self,
@@ -355,20 +258,7 @@ class LearningMetrics:
 
     def clear_metrics(self):
         """Clear all learning metrics (useful for testing)."""
-        self.metrics = {
-            "total_queries": 0,
-            "successful_queries": 0,
-            "ai_generated": 0,
-            "heuristic_fallback": 0,
-            "sql_corrected": 0,
-            "cache_hits": 0,
-            "error_patterns": defaultdict(int),
-            "category_performance": defaultdict(lambda: {"total": 0, "successful": 0}),
-            "query_complexity": defaultdict(int),
-            "response_times": [],
-            "accuracy_by_source": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
-            "source_totals": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
-        }
+        self.metrics = DEFAULT_METRICS_CONFIG.copy()
         # Clear from cache too
         delete_cache("learning_metrics")
 
@@ -377,32 +267,7 @@ class QueryExpander:
     """Provides query expansion and suggestions based on similar queries."""
 
     def __init__(self):
-        self.suggestion_patterns = {
-            "revenue": [
-                "What are the top products by revenue?",
-                "Show me revenue trends over time",
-                "Which customers generate the most revenue?",
-                "What's our total revenue this quarter?",
-            ],
-            "customer": [
-                "Who are our top customers?",
-                "Show me customer segments",
-                "What's the average order value by customer?",
-                "Which customers haven't ordered recently?",
-            ],
-            "product": [
-                "What are our best-selling products?",
-                "Show me product performance by category",
-                "Which products need restocking?",
-                "What's the inventory level for each product?",
-            ],
-            "time_series": [
-                "Show me sales trends over the last year",
-                "What are the monthly sales patterns?",
-                "How has revenue changed quarter over quarter?",
-                "What are the seasonal trends?",
-            ],
-        }
+        self.suggestion_patterns = SUGGESTION_PATTERNS
 
     def get_suggestions(
         self, question: str, category: str, n_suggestions: int = 3
@@ -416,13 +281,7 @@ class QueryExpander:
 
         # Add general suggestions if we need more
         if len(suggestions) < n_suggestions:
-            general_suggestions = [
-                "What are the top 5 products by revenue?",
-                "Show me customer distribution by region",
-                "What's our total sales this month?",
-                "Which products have the highest profit margins?",
-            ]
-            suggestions.extend(general_suggestions[: n_suggestions - len(suggestions)])
+            suggestions.extend(GENERAL_SUGGESTIONS[: n_suggestions - len(suggestions)])
 
         # Filter out the current question to avoid redundancy
         filtered_suggestions = [
