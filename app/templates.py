@@ -1,0 +1,114 @@
+"""
+Template rendering utilities for HTML pages.
+
+Provides functions to load and format HTML templates with dynamic data.
+"""
+
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+def load_template(template_name: str) -> str:
+    """Load HTML template from templates directory."""
+    template_path = Path(__file__).parent / "templates" / template_name
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def format_learning_dashboard_template(
+    total_queries: int,
+    success_rate: float,
+    avg_response_time: float,
+    ai_usage_rate: float,
+    cache_hit_rate: float,
+    correction_rate: float,
+    category_data: List[Dict[str, Any]],
+    error_data: List[Dict[str, Any]],
+    complexity_data: List[Dict[str, Any]],
+    source_data: List[Dict[str, Any]],
+) -> str:
+    """Format the learning dashboard template with data."""
+    template = load_template("learning_dashboard.html")
+
+    # Format category HTML
+    if category_data:
+        category_html = "".join(
+            [
+                f"""
+            <div class="category-item">
+                <div class="category-name">{cat['name']}</div>
+                <div class="category-stats">
+                    {cat['successful']}/{cat['total']} queries
+                    <span class="success-rate">({cat['success_rate']:.1%} success)</span>
+                </div>
+            </div>
+            """
+                for cat in category_data
+            ]
+        )
+    else:
+        category_html = '<div class="no-data">No category data available</div>'
+
+    # Format error HTML
+    if error_data:
+        error_html = "".join(
+            [
+                f"""
+            <div class="error-item">
+                <div class="error-type">{error['type'].replace('_', ' ').title()}</div>
+                <div class="error-count">{error['count']} occurrences</div>
+            </div>
+            """
+                for error in error_data
+            ]
+        )
+    else:
+        error_html = '<div class="no-data">No errors recorded</div>'
+
+    # Format complexity HTML
+    if complexity_data:
+        complexity_html = "".join(
+            [
+                f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 6px;">
+                <span style="font-weight: 600; color: #374151;">{comp['level'].title()}</span>
+                <span style="color: #6b7280;">{comp['count']} queries</span>
+            </div>
+            """
+                for comp in complexity_data
+            ]
+        )
+    else:
+        complexity_html = '<div class="no-data">No complexity data available</div>'
+
+    # Format source HTML
+    if source_data:
+        source_html = "".join(
+            [
+                f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 6px;">
+                <span style="font-weight: 600; color: #374151;">{source['source'].title()}</span>
+                <div style="text-align: right;">
+                    <div style="color: #6b7280; font-size: 0.9rem;">{source['successful']}/{source['total']} queries</div>
+                    <div style="color: #059669; font-weight: 600;">{source['accuracy_percentage']} accuracy</div>
+                </div>
+            </div>
+            """
+                for source in source_data
+            ]
+        )
+    else:
+        source_html = '<div class="no-data">No source data available</div>'
+
+    return template.format(
+        total_queries=total_queries,
+        success_rate=success_rate,
+        avg_response_time=avg_response_time,
+        ai_usage_rate=ai_usage_rate,
+        cache_hit_rate=cache_hit_rate,
+        correction_rate=correction_rate,
+        category_html=category_html,
+        error_html=error_html,
+        complexity_html=complexity_html,
+        source_html=source_html,
+    )

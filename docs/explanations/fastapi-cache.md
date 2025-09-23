@@ -24,7 +24,7 @@ app/
 
 ## 🧠 **Why FastAPI Holds `_store`:**
 
-When you start the server with `python run_server.py`:
+When you start the server with `python scripts/server/start_server.py`:
 
 1. **Python imports** all modules in `app/`
 2. **`cache.py` executes** → `_store = {}` is created in memory
@@ -35,7 +35,7 @@ When you start the server with `python run_server.py`:
 ## 🔄 **The Process Flow:**
 
 ```
-1. python run_server.py
+1. python scripts/server/start_server.py
    ↓
 2. FastAPI loads app/main.py
    ↓

@@ -73,7 +73,7 @@ SOURCE db/init.sql;
 
 ```bash
 # Run setup script (automated)
-python setup_openai.py
+python scripts/setup/setup_openai.py
 
 # Or manually configure in .env file
 OPENAI_API_KEY=sk-your-actual-key-here
@@ -113,7 +113,7 @@ pytest
 
 ```bash
 # Production server
-python run_server.py
+python scripts/server/start_server.py
 
 # Development server with auto-reload
 python -m uvicorn app.main:app --reload --port 8000
@@ -143,7 +143,7 @@ curl -X POST "http://localhost:8000/ask?html=true" \
 http://localhost:8000/ask-html?question=sales%20by%20month
 
 # Convenience script
-./ask-and-open.sh "sales by month"
+./scripts/ask/ask-and-open.sh "sales by month"
 ```
 
 ### Response Formats
@@ -172,12 +172,21 @@ http://localhost:8000/ask-html?question=sales%20by%20month
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/ask` | POST | Natural language to SQL conversion |
-| `/ask?html=true` | POST | HTML response with charts |
+| `/ask?html=true` | POST | HTML response with charts and tables |
 | `/ask-html?question=...` | GET | Browser-friendly HTML interface |
+| `/test-html` | GET | Test HTML generation without database |
 | `/schema` | GET | Database schema metadata |
 | `/health` | GET | Service health check |
 | `/embeddings/status` | GET | Embeddings system status |
 | `/embeddings/initialize` | POST | Initialize schema embeddings |
+| `/learning/metrics` | GET | Learning metrics and performance stats |
+| `/learning/clear` | POST | Clear all learning metrics |
+| `/learning/dashboard` | GET | HTML learning metrics dashboard |
+| `/errors/logs` | GET | Recent AI error logs |
+| `/errors/summary` | GET | Error summary and statistics |
+| `/errors/stats` | GET | Log file statistics |
+| `/errors/clear` | POST | Clear all error logs |
+| `/export/csv` | POST | Export query results as CSV |
 
 ---
 

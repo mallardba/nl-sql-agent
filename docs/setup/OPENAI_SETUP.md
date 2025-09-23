@@ -18,7 +18,7 @@ pip install langchain langchain-openai python-dotenv
 ### 3. Configure Environment
 Run the setup script:
 ```bash
-python setup_openai.py
+python scripts/setup/setup_openai.py
 ```
 
 This will:
@@ -62,7 +62,7 @@ Question → OpenAI understands intent → Generates SQL → Results
 uvicorn app.main:app --reload
 
 # Test with your script
-./ask-and-open.sh "What were our top 5 products by revenue last quarter?"
+./scripts/ask/ask-and-open.sh "What were our top 5 products by revenue last quarter?"
 ```
 
 ### Example Questions to Try
