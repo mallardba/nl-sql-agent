@@ -143,7 +143,7 @@ curl -X POST "http://localhost:8000/ask?html=true" \
 http://localhost:8000/ask-html?question=sales%20by%20month
 
 # Convenience script
-./scripts/ask/ask-and-open.sh "sales by month"
+python scripts/ask/ask_and_open.py "sales by month"
 ```
 
 ### Response Formats
