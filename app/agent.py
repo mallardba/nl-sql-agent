@@ -27,6 +27,8 @@ from .config import (
     CATEGORICAL_KEYWORDS,
     CHART_THRESHOLDS,
     COMMON_AMBIGUOUS_COLUMNS,
+    FALLBACK_QUERIES,
+    HEURISTIC_PATTERNS,
     LEARNED_PATTERNS,
     LINE_CHART_KEYWORDS,
     PIE_CHART_KEYWORDS,
@@ -678,63 +680,15 @@ def _generate_sql_with_ai(
 def _heuristic_sql_fallback(question: str) -> str:
     """Robust heuristic SQL generation using pattern matching."""
     if not question or not isinstance(question, str):
-        return "SELECT 'Invalid question input' AS message, COUNT(*) AS total_orders FROM orders LIMIT 1;"
+        return FALLBACK_QUERIES["invalid_input"]
 
     q = question.lower()
-
-    # Pattern-based SQL generation
-    patterns = [
-        # Revenue/Sales patterns
-        {
-            "keywords": ["top", "product", "revenue"],
-            "generator": _generate_revenue_query,
-        },
-        {"keywords": ["top", "product", "sales"], "generator": _generate_revenue_query},
-        {
-            "keywords": ["best", "selling", "product"],
-            "generator": _generate_revenue_query,
-        },
-        {
-            "keywords": ["highest", "revenue", "product"],
-            "generator": _generate_revenue_query,
-        },
-        # Time-based patterns
-        {"keywords": ["sales", "month"], "generator": _generate_monthly_sales_query},
-        {"keywords": ["monthly", "sales"], "generator": _generate_monthly_sales_query},
-        {"keywords": ["revenue", "trend"], "generator": _generate_monthly_sales_query},
-        {
-            "keywords": ["quarterly", "quarter"],
-            "generator": _generate_quarterly_sales_query,
-        },
-        {
-            "keywords": ["sales", "quarter"],
-            "generator": _generate_quarterly_sales_query,
-        },
-        {
-            "keywords": ["revenue", "quarter"],
-            "generator": _generate_quarterly_sales_query,
-        },
-        # Customer patterns
-        {"keywords": ["top", "customer"], "generator": _generate_customer_query},
-        {
-            "keywords": ["customer", "order", "value"],
-            "generator": _generate_customer_query,
-        },
-        {"keywords": ["new", "customer"], "generator": _generate_new_customer_query},
-        # Product patterns
-        {"keywords": ["product", "inventory"], "generator": _generate_inventory_query},
-        {"keywords": ["low", "stock"], "generator": _generate_inventory_query},
-        {"keywords": ["product", "category"], "generator": _generate_category_query},
-        # Order patterns
-        {"keywords": ["order", "status"], "generator": _generate_order_status_query},
-        {"keywords": ["recent", "order"], "generator": _generate_recent_orders_query},
-    ]
 
     # Find the best matching pattern
     best_match = None
     best_score = 0
 
-    for pattern in patterns:
+    for pattern in HEURISTIC_PATTERNS:
         score = sum(1 for keyword in pattern["keywords"] if keyword in q)
         if score > best_score:
             best_score = score
@@ -743,7 +697,10 @@ def _heuristic_sql_fallback(question: str) -> str:
     # Generate SQL based on the best match
     if best_match and best_score > 0:
         try:
-            sql = best_match["generator"](q)
+            # Get the generator function by name
+            generator_name = best_match["generator"]
+            generator_func = globals()[generator_name]
+            sql = generator_func(q)
             if os.getenv("DEBUG", "false").lower() == "true":
                 print(f"Heuristic generated SQL: {sql[:100]}...")
             return sql
@@ -752,7 +709,7 @@ def _heuristic_sql_fallback(question: str) -> str:
                 print(f"Heuristic generation failed: {e}")
 
     # Ultimate fallback - return a safe query
-    return "SELECT 'No specific pattern matched' AS message, COUNT(*) AS total_orders FROM orders LIMIT 1;"
+    return FALLBACK_QUERIES["no_match"]
 
 
 def _generate_revenue_query(q: str) -> str:

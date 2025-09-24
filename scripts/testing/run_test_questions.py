@@ -5,78 +5,21 @@ This helps identify SQL errors and test the system's robustness.
 """
 
 import json
+import os
+
+# Import test questions from centralized config
+import sys
 import time
 from typing import Any, Dict
 
 import requests
 
-# Base URL for the API
-BASE_URL = "http://localhost:8000"
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-# Test questions organized by category
-TEST_QUESTIONS = {
-    "Revenue & Sales Analysis": [
-        "Top 5 products by revenue last quarter",
-        "Best selling products this year",
-        "Highest revenue customers last 6 months",
-        "Most profitable product categories",
-        "Sales by month for the last year",
-        "Revenue trends over the past 6 months",
-        "Quarterly sales comparison",
-        "Daily sales for last week",
-    ],
-    "Customer Analysis": [
-        "Top 10 customers by total order value",
-        "Customers who haven't ordered in 3 months",
-        "New customers this month",
-        "Customer distribution by region",
-        "Average order value by customer segment",
-    ],
-    "Product & Inventory": [
-        "Products with low inventory",
-        "Most returned products",
-        "Product performance by category",
-        "Items with highest profit margins",
-        "Products that need restocking",
-    ],
-    "Business Intelligence": [
-        "Order status distribution",
-        "Average processing time by region",
-        "Payment method preferences",
-        "Return rates by product category",
-        "Employee performance metrics",
-        "What percentage of total revenue comes from each product category?",
-        "How is our customer base distributed by region?",
-        "What's the breakdown of order statuses (completed, pending, cancelled)?",
-        "Which product categories make up our total sales?",
-        "How are our customers distributed by segment?",
-    ],
-    "Advanced Analytics": [
-        "Revenue growth rate month over month",
-        "Customer lifetime value analysis",
-        "Seasonal sales patterns",
-        "Cross-selling opportunities",
-        "Market share by product category",
-    ],
-    "Time Period Tests": [
-        "Sales last year",
-        "Revenue this quarter",
-        "Orders in the past 3 months",
-        "Performance last 6 months",
-    ],
-    "Aggregation Tests": [
-        "Total revenue by region",
-        "Average order size by month",
-        "Count of orders by status",
-        "Sum of discounts applied",
-    ],
-    "Filtering Tests": [
-        "Orders over $1000",
-        "Products with discount > 10%",
-        "Customers from specific regions",
-        "High-value transactions",
-    ],
-}
+from app.config import TEST_CONFIG, TEST_QUESTIONS
+
+# Base URL for the API
+BASE_URL = TEST_CONFIG["base_url"]
 
 
 def run_single_question(question: str, category: str) -> Dict[str, Any]:
@@ -90,7 +33,7 @@ def run_single_question(question: str, category: str) -> Dict[str, Any]:
             f"{BASE_URL}/ask",
             headers={"Content-Type": "application/json"},
             json={"question": question},
-            timeout=30,
+            timeout=TEST_CONFIG["timeout"],
         )
 
         if response.status_code == 200:
@@ -263,7 +206,9 @@ def run_all_tests():
 
     # Check if server is running
     try:
-        health_response = requests.get(f"{BASE_URL}/health", timeout=5)
+        health_response = requests.get(
+            f"{BASE_URL}/health", timeout=TEST_CONFIG["timeout"]
+        )
         if health_response.status_code != 200:
             print(
                 "❌ Server is not running. Please start with: python -m uvicorn app.main:app --reload"
@@ -429,12 +374,11 @@ def run_all_tests():
     print("\n💾 Detailed results saved to: test_results.json")
 
     print("\n🎯 Next Steps:")
-    if error_count > 0:
-        print(f"  • Fix {error_count} SQL errors (Step 5: SQL Error Correction)")
-    if warning_count > 0:
+    if error_count > 0 or warning_count > 0:
+        print(f"  • Fix {error_count} SQL errors")
         print(f"  • Investigate {warning_count} warnings")
-    print("  • Enhance AI prompts with schema context (Step 2)")
-    print("  • Add question learning patterns (Step 3)")
+    else:
+        print("  • Keep iterating on the prompts and schema")
 
 
 if __name__ == "__main__":
