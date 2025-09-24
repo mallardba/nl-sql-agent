@@ -22,6 +22,20 @@ from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 
 from .cache import get_cache, set_cache
+from .config import (
+    AGGREGATE_FUNCTIONS,
+    CATEGORICAL_KEYWORDS,
+    CHART_THRESHOLDS,
+    COMMON_AMBIGUOUS_COLUMNS,
+    LEARNED_PATTERNS,
+    LINE_CHART_KEYWORDS,
+    PIE_CHART_KEYWORDS,
+    SCATTER_CHART_KEYWORDS,
+    SQL_PATTERNS,
+    SQL_THRESHOLDS,
+    TIME_KEYWORDS,
+    TIME_PATTERNS,
+)
 from .error_logger import log_ai_error
 from .learning import (
     categorize_query,
@@ -94,6 +108,7 @@ def determine_chart_type(
     Returns:
         Chart type: 'line', 'bar', 'pie', 'scatter', or 'area'
     """
+
     # Convert to lowercase for analysis
     x_name_lower = x_name.lower()
     question_lower = question.lower()
@@ -103,88 +118,43 @@ def determine_chart_type(
     unique_y_values = len(set(str(y) for y in y_data))
 
     # 1. Time series analysis
-    time_keywords = [
-        "month",
-        "date",
-        "year",
-        "time",
-        "day",
-        "week",
-        "quarter",
-        "ym",
-        "ymd",
-    ]
-    if any(keyword in x_name_lower for keyword in time_keywords):
+    if any(keyword in x_name_lower for keyword in TIME_KEYWORDS):
         # For quarterly data with few points, prefer bar chart
-        if "quarter" in x_name_lower and unique_x_values <= 4:
+        if (
+            "quarter" in x_name_lower
+            and unique_x_values <= CHART_THRESHOLDS["quarter_max_points"]
+        ):
             return "bar"
         # For other time data, use line chart
         return "line"
 
     # 2. Question context analysis
-    if any(
-        keyword in question_lower
-        for keyword in ["trend", "over time", "timeline", "progression"]
-    ):
+    if any(keyword in question_lower for keyword in LINE_CHART_KEYWORDS):
         return "line"
 
-    if any(
-        keyword in question_lower
-        for keyword in ["correlation", "relationship", "scatter", "compare"]
-    ):
+    if any(keyword in question_lower for keyword in SCATTER_CHART_KEYWORDS):
         return "scatter"
 
-    if any(
-        keyword in question_lower
-        for keyword in ["distribution", "proportion", "percentage", "share"]
-    ):
+    if any(keyword in question_lower for keyword in PIE_CHART_KEYWORDS):
         return "pie"
 
     # 3. Data distribution analysis
 
     # Pie chart for categorical data with few categories
     # But exclude time-based data (quarters, months, etc.)
-    if unique_x_values <= 8 and unique_x_values >= 2:
+    if (
+        CHART_THRESHOLDS["pie_min_categories"]
+        <= unique_x_values
+        <= CHART_THRESHOLDS["pie_max_categories"]
+    ):
         # Check if Y values are numeric (for pie chart)
         try:
             numeric_y = [float(y) for y in y_data if y is not None]
             if len(numeric_y) == len(y_data):  # All Y values are numeric
-                # Exclude time-based patterns
-                time_patterns = [
-                    "q1",
-                    "q2",
-                    "q3",
-                    "q4",
-                    "jan",
-                    "feb",
-                    "mar",
-                    "apr",
-                    "may",
-                    "jun",
-                    "jul",
-                    "aug",
-                    "sep",
-                    "oct",
-                    "nov",
-                    "dec",
-                    "january",
-                    "february",
-                    "march",
-                    "april",
-                    "may",
-                    "june",
-                    "july",
-                    "august",
-                    "september",
-                    "october",
-                    "november",
-                    "december",
-                ]
-
                 # Check if X data contains time patterns
                 x_data_lower = [str(x).lower() for x in x_data]
                 has_time_pattern = any(
-                    pattern in " ".join(x_data_lower) for pattern in time_patterns
+                    pattern in " ".join(x_data_lower) for pattern in TIME_PATTERNS
                 )
 
                 if not has_time_pattern:
@@ -193,7 +163,10 @@ def determine_chart_type(
             pass
 
     # Scatter plot for correlation analysis
-    if unique_x_values > 10 and unique_y_values > 10:
+    if (
+        unique_x_values > CHART_THRESHOLDS["scatter_min_unique_values"]
+        and unique_y_values > CHART_THRESHOLDS["scatter_min_unique_values"]
+    ):
         try:
             # Check if both X and Y are numeric
             numeric_x = [float(x) for x in x_data if x is not None]
@@ -204,9 +177,7 @@ def determine_chart_type(
             pass
 
     # 4. Column name analysis
-    if any(
-        keyword in x_name_lower for keyword in ["category", "type", "segment", "group"]
-    ):
+    if any(keyword in x_name_lower for keyword in CATEGORICAL_KEYWORDS):
         if unique_x_values <= 6:
             return "pie"
         else:
@@ -327,17 +298,7 @@ def _apply_learned_patterns(sql: str) -> Tuple[str, List[str]]:
 
     fixes = []
 
-    # This is where we would apply patterns learned from previous errors
-    # For now, we'll implement a simple pattern matching system
-
-    # Learn from common error patterns
-    # Note: These patterns are currently disabled as they were too broad
-    # and were matching valid SQL queries unnecessarily
-    learned_patterns = [
-        # TODO: Add more specific patterns based on actual error analysis
-    ]
-
-    for pattern_info in learned_patterns:
+    for pattern_info in LEARNED_PATTERNS:
         if re.search(pattern_info["pattern"], sql, re.IGNORECASE):
             sql = re.sub(
                 pattern_info["pattern"],
@@ -371,7 +332,7 @@ def _fix_cast_syntax(sql: str) -> Tuple[str, List[str]]:
     fixes = []
 
     # Pattern: CAST(expression) AS alias -> CAST(expression AS DECIMAL(10,2)) AS alias
-    pattern = r"CAST\(([^)]+)\)\s*AS\s+(\w+)(?=\s+FROM|\s+ORDER|\s+GROUP|\s+WHERE|\s*$)"
+    pattern = SQL_PATTERNS["cast_syntax"]
 
     def replace_cast(match):
         expression = match.group(1)
@@ -392,29 +353,30 @@ def _fix_ambiguous_columns(sql: str) -> Tuple[str, List[str]]:
     tables_with_aliases = {}
 
     # Find FROM table
-    from_match = re.search(r"FROM\s+(\w+)(?:\s+(\w+))?", sql, re.IGNORECASE)
+    from_match = re.search(SQL_PATTERNS["from_table"], sql, re.IGNORECASE)
     if from_match:
         table_name = from_match.group(1)
         alias = (
-            from_match.group(2) or table_name.lower()[:2]
+            from_match.group(2)
+            or table_name.lower()[: SQL_THRESHOLDS["max_table_alias_length"]]
         )  # Use first 2 chars as alias
         tables_with_aliases[table_name] = alias
 
     # Find JOIN tables
-    join_matches = re.finditer(r"JOIN\s+(\w+)(?:\s+(\w+))?", sql, re.IGNORECASE)
+    join_matches = re.finditer(SQL_PATTERNS["join_table"], sql, re.IGNORECASE)
     for match in join_matches:
         table_name = match.group(1)
-        alias = match.group(2) or table_name.lower()[:2]
+        alias = (
+            match.group(2)
+            or table_name.lower()[: SQL_THRESHOLDS["max_table_alias_length"]]
+        )
         tables_with_aliases[table_name] = alias
 
     # If we have multiple tables, check for ambiguous columns
     if len(tables_with_aliases) > 1:
-        # Common ambiguous columns that appear in multiple tables
-        common_ambiguous_columns = ["id", "name", "created_at", "updated_at"]
-
-        for column in common_ambiguous_columns:
+        for column in COMMON_AMBIGUOUS_COLUMNS:
             # Look for bare column references (not table.column)
-            bare_column_pattern = rf"(?<!\w\.)\b{column}\b(?!\s*\.)"
+            bare_column_pattern = SQL_PATTERNS["bare_column"].format(column=column)
             if re.search(bare_column_pattern, sql, re.IGNORECASE):
                 # Try to determine the correct table based on context
                 # For now, we'll use a simple heuristic: prefer the first table
@@ -462,8 +424,7 @@ def _fix_join_syntax(sql: str) -> Tuple[str, List[str]]:
         fixes.append("Detected JOIN without ON clause")
 
     # Fix malformed JOIN conditions
-    join_on_pattern = r"JOIN\s+\w+\s+ON\s+(\w+\.\w+\s*=\s*\w+\.\w+)"
-    if re.search(join_on_pattern, sql):
+    if re.search(SQL_PATTERNS["join_on"], sql):
         fixes.append("Detected JOIN condition syntax")
 
     return sql, fixes
@@ -477,19 +438,18 @@ def _fix_groupby_syntax(sql: str) -> Tuple[str, List[str]]:
     # Check if SELECT has non-aggregate columns but no GROUP BY
     if "SELECT" in sql.upper() and "GROUP BY" not in sql.upper():
         # Look for aggregate functions
-        aggregate_functions = ["SUM(", "COUNT(", "AVG(", "MAX(", "MIN("]
-        has_aggregates = any(func in sql.upper() for func in aggregate_functions)
+        has_aggregates = any(func in sql.upper() for func in AGGREGATE_FUNCTIONS)
 
         if has_aggregates:
             # Look for non-aggregate columns
             select_match = re.search(
-                r"SELECT\s+(.*?)\s+FROM", sql, re.IGNORECASE | re.DOTALL
+                SQL_PATTERNS["select_clause"], sql, re.IGNORECASE | re.DOTALL
             )
             if select_match:
                 select_clause = select_match.group(1)
                 # Simple check for non-aggregate columns
                 if re.search(r"\b\w+\b", select_clause) and not all(
-                    func in select_clause.upper() for func in aggregate_functions
+                    func in select_clause.upper() for func in AGGREGATE_FUNCTIONS
                 ):
                     fixes.append("Detected potential GROUP BY issue")
 
@@ -502,31 +462,42 @@ def _fix_invalid_join_references(sql: str) -> Tuple[str, List[str]]:
     fixes = []
 
     # Fix COUNT(JOIN.id) -> COUNT(orders.id) or appropriate table reference
-    join_id_pattern = r"COUNT\(JOIN\.id\)"
-    if re.search(join_id_pattern, sql, re.IGNORECASE):
+    if re.search(SQL_PATTERNS["join_id_reference"], sql, re.IGNORECASE):
         # Try to determine the correct table reference
         # Look for table names in FROM and JOIN clauses
-        from_match = re.search(r"FROM\s+(\w+)", sql, re.IGNORECASE)
+        from_match = re.search(SQL_PATTERNS["from_table"], sql, re.IGNORECASE)
         if from_match:
             table_name = from_match.group(1)
             sql = re.sub(
-                join_id_pattern, f"COUNT({table_name}.id)", sql, flags=re.IGNORECASE
+                SQL_PATTERNS["join_id_reference"],
+                f"COUNT({table_name}.id)",
+                sql,
+                flags=re.IGNORECASE,
             )
             fixes.append(f"Fixed COUNT(JOIN.id) -> COUNT({table_name}.id)")
         else:
             # Fallback to orders table
-            sql = re.sub(join_id_pattern, "COUNT(orders.id)", sql, flags=re.IGNORECASE)
-            fixes.append("Fixed COUNT(JOIN.id) -> COUNT(orders.id)")
+            sql = re.sub(
+                SQL_PATTERNS["join_id_reference"],
+                f"COUNT({SQL_THRESHOLDS['preferred_fallback_table']}.id)",
+                sql,
+                flags=re.IGNORECASE,
+            )
+            fixes.append(
+                f"Fixed COUNT(JOIN.id) -> COUNT({SQL_THRESHOLDS['preferred_fallback_table']}.id)"
+            )
 
     # Fix other invalid JOIN references
-    join_ref_pattern = r"JOIN\.(\w+)"
-    if re.search(join_ref_pattern, sql, re.IGNORECASE):
+    if re.search(SQL_PATTERNS["join_reference"], sql, re.IGNORECASE):
         # Look for the most likely table reference
-        from_match = re.search(r"FROM\s+(\w+)", sql, re.IGNORECASE)
+        from_match = re.search(SQL_PATTERNS["from_table"], sql, re.IGNORECASE)
         if from_match:
             table_name = from_match.group(1)
             sql = re.sub(
-                join_ref_pattern, f"{table_name}.\\1", sql, flags=re.IGNORECASE
+                SQL_PATTERNS["join_reference"],
+                f"{table_name}.\\1",
+                sql,
+                flags=re.IGNORECASE,
             )
             fixes.append(f"Fixed JOIN.column references -> {table_name}.column")
 
