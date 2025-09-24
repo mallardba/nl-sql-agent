@@ -860,7 +860,7 @@ def _extract_limit(q: str, default: int = 10) -> int:
     return default
 
 
-def answer_question(question: str) -> dict:
+def answer_question(question: str, force_heuristic: bool = False) -> dict:
     """Answer a natural language question using AI-powered SQL generation."""
     start_time = time.time()
 
@@ -964,11 +964,21 @@ def answer_question(question: str) -> dict:
         # Get schema information for AI context
         schema_info = get_schema_metadata()
 
-        # Generate SQL using AI (with fallback to heuristic)
-        sql, sql_corrected, sql_source = _generate_sql_with_ai(question, schema_info)
+        # Generate SQL using AI (with fallback to heuristic) or force heuristic
+        if force_heuristic:
+            # Force heuristic generation
+            sql = _heuristic_sql_fallback(question)
+            sql_corrected = False
+            sql_source = "heuristic"
+            ai_fallback_error = False
+        else:
+            # Generate SQL using AI (with fallback to heuristic)
+            sql, sql_corrected, sql_source = _generate_sql_with_ai(
+                question, schema_info
+            )
 
-        # Track if this was a fallback due to AI failure
-        ai_fallback_error = sql_source == "heuristic_fallback"
+            # Track if this was a fallback due to AI failure
+            ai_fallback_error = sql_source == "heuristic_fallback"
 
         # Record AI attempt (even if it failed and fell back to heuristic)
         if sql_source in ["ai", "heuristic_fallback"]:

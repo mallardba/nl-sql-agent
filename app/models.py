@@ -22,6 +22,7 @@ from pydantic import BaseModel
 # Request Models (Input)
 class AskRequest(BaseModel):
     question: str
+    force_heuristic: bool = False
 
 
 class ExportRequest(BaseModel):

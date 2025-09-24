@@ -152,7 +152,7 @@ def ask(
                 status_code=400, detail="Question must be a non-empty string"
             )
 
-        result = answer_question(req.question)
+        result = answer_question(req.question, force_heuristic=req.force_heuristic)
 
         if html:
             # Return HTML response with embedded charts and tables

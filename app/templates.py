@@ -5,8 +5,21 @@ Provides functions to load and format HTML templates with dynamic data.
 """
 
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List
+
+
+def _serialize_for_json(obj: Any) -> Any:
+    """Convert non-JSON-serializable objects to JSON-serializable ones."""
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {key: _serialize_for_json(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_for_json(item) for item in obj]
+    else:
+        return obj
 
 
 def load_template(template_name: str) -> str:
@@ -128,7 +141,8 @@ def format_query_results_template(
     template = load_template("query_results.html")
 
     # Convert rows to JSON for JavaScript
-    results_json = json.dumps(rows) if rows else "[]"
+    serialized_rows = _serialize_for_json(rows)
+    results_json = json.dumps(serialized_rows) if serialized_rows else "[]"
 
     return template.format(
         question=question,

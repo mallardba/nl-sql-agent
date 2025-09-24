@@ -23,6 +23,8 @@ Thumbs.db
 
 # Project specific
 response.html
+test_failure_results.json
+test_heuristic_generation_results.json
 test_results.json
 chroma_db/
 *.log
