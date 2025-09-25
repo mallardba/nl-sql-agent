@@ -6,18 +6,19 @@ This script sends a question to the NL-SQL Agent and opens the HTML response
 directly in the default web browser.
 """
 
-import sys
+import argparse
 import urllib.parse
 import webbrowser
 from typing import Optional
 
 
-def ask_and_open(question: Optional[str] = None) -> None:
+def ask_and_open(question: Optional[str] = None, force_heuristic: bool = False) -> None:
     """
     Ask a question and open the result in a web browser.
 
     Args:
         question: The question to ask. If None, will prompt for input.
+        force_heuristic: Whether to force heuristic SQL generation instead of AI.
     """
     if not question:
         question = input("Enter your question: ").strip()
@@ -30,6 +31,8 @@ def ask_and_open(question: Optional[str] = None) -> None:
 
     # Construct the URL
     url = f"http://localhost:8000/ask-html?question={encoded_question}"
+    if force_heuristic:
+        url += "&force_heuristic=true"
 
     print(f"🔍 Asking: {question}")
     print(f"🌐 Opening: {url}")
@@ -45,13 +48,30 @@ def ask_and_open(question: Optional[str] = None) -> None:
 
 def main():
     """Main entry point."""
-    if len(sys.argv) > 1:
+    parser = argparse.ArgumentParser(
+        description="Ask a question to the NL-SQL Agent and open the result in a web browser."
+    )
+    parser.add_argument(
+        "-f",
+        "--force-heuristic",
+        action="store_true",
+        help="Force heuristic SQL generation instead of AI.",
+    )
+    parser.add_argument(
+        "question",
+        nargs="*",
+        help="The question to ask the NL-SQL Agent.",
+    )
+
+    args = parser.parse_args()
+
+    if args.question:
         # Question provided as command line argument
-        question = " ".join(sys.argv[1:])
-        ask_and_open(question)
+        question = " ".join(args.question)
+        ask_and_open(question, force_heuristic=args.force_heuristic)
     else:
         # Interactive mode
-        ask_and_open()
+        ask_and_open(force_heuristic=args.force_heuristic)
 
 
 if __name__ == "__main__":

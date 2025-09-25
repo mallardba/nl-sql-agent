@@ -186,7 +186,7 @@ def ask(
 
 
 @app.get("/ask-html")
-def ask_html(question: str):
+def ask_html(question: str, force_heuristic: bool = Query(False)):
     """Simple GET endpoint for testing HTML responses in browser."""
     try:
         # Validate question before processing
@@ -195,7 +195,7 @@ def ask_html(question: str):
                 status_code=400, detail="Question must be a non-empty string"
             )
 
-        result = answer_question(question)
+        result = answer_question(question, force_heuristic=force_heuristic)
 
         html_content = create_complete_html_page(
             question=question,

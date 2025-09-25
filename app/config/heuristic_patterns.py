@@ -23,6 +23,7 @@ HEURISTIC_PATTERNS = [
     # Time-based patterns
     {"keywords": ["sales", "month"], "generator": "_generate_monthly_sales_query"},
     {"keywords": ["monthly", "sales"], "generator": "_generate_monthly_sales_query"},
+    {"keywords": ["monthly", "revenue"], "generator": "_generate_monthly_sales_query"},
     {"keywords": ["revenue", "trend"], "generator": "_generate_monthly_sales_query"},
     {
         "keywords": ["quarterly", "quarter"],

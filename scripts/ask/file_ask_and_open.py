@@ -6,7 +6,7 @@ This script sends a question to the NL-SQL Agent, saves the HTML response
 to a file, and opens it in the default web browser.
 """
 
-import sys
+import argparse
 import webbrowser
 from pathlib import Path
 from typing import Optional
@@ -15,7 +15,9 @@ import requests
 
 
 def ask_and_open_file(
-    question: Optional[str] = None, output_file: str = "response.html"
+    question: Optional[str] = None,
+    output_file: str = "response.html",
+    force_heuristic: bool = False,
 ) -> None:
     """
     Ask a question and save HTML response to file, then open it.
@@ -23,6 +25,7 @@ def ask_and_open_file(
     Args:
         question: The question to ask. If None, will prompt for input.
         output_file: The filename to save the HTML response to.
+        force_heuristic: Whether to force heuristic SQL generation instead of AI.
     """
     if not question:
         question = input("Enter your question: ").strip()
@@ -34,10 +37,14 @@ def ask_and_open_file(
 
     try:
         # Send POST request to get HTML response
+        payload = {"question": question}
+        if force_heuristic:
+            payload["force_heuristic"] = True
+
         response = requests.post(
             "http://localhost:8000/ask?html=true",
             headers={"Content-Type": "application/json"},
-            json={"question": question},
+            json=payload,
             timeout=30,
         )
 
@@ -70,13 +77,39 @@ def ask_and_open_file(
 
 def main():
     """Main entry point."""
-    if len(sys.argv) > 1:
+    parser = argparse.ArgumentParser(
+        description="Ask a question to the NL-SQL Agent, save HTML response to file, and open it."
+    )
+    parser.add_argument(
+        "-f",
+        "--force-heuristic",
+        action="store_true",
+        help="Force heuristic SQL generation instead of AI.",
+    )
+    parser.add_argument(
+        "--output-file",
+        default="response.html",
+        help="The filename to save the HTML response to (default: response.html).",
+    )
+    parser.add_argument(
+        "question",
+        nargs="*",
+        help="The question to ask the NL-SQL Agent.",
+    )
+
+    args = parser.parse_args()
+
+    if args.question:
         # Question provided as command line argument
-        question = " ".join(sys.argv[1:])
-        ask_and_open_file(question)
+        question = " ".join(args.question)
+        ask_and_open_file(
+            question, args.output_file, force_heuristic=args.force_heuristic
+        )
     else:
         # Interactive mode
-        ask_and_open_file()
+        ask_and_open_file(
+            output_file=args.output_file, force_heuristic=args.force_heuristic
+        )
 
 
 if __name__ == "__main__":

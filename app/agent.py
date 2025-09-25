@@ -16,7 +16,6 @@ Key Features:
 """
 
 import os
-import re
 import time
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple
@@ -25,8 +24,6 @@ from .cache import get_cache, set_cache
 from .config import (
     CATEGORICAL_KEYWORDS,
     CHART_THRESHOLDS,
-    FALLBACK_QUERIES,
-    HEURISTIC_PATTERNS,
     LINE_CHART_KEYWORDS,
     PIE_CHART_KEYWORDS,
     SCATTER_CHART_KEYWORDS,
@@ -34,6 +31,7 @@ from .config import (
     TIME_PATTERNS,
 )
 from .error_logger import log_ai_error
+from .heuristic_handler import heuristic_sql_fallback
 from .learning import (
     categorize_query,
     get_query_suggestions,
@@ -249,7 +247,7 @@ def _generate_sql_with_ai(
     """Generate SQL using OpenAI based on the question and schema."""
     if not LANGCHAIN_AVAILABLE:
         # Fallback to heuristic approach if LangChain not available
-        return _heuristic_sql_fallback(question)
+        return heuristic_sql_fallback(question)
 
     try:
         llm = _get_llm()
@@ -344,190 +342,7 @@ def _generate_sql_with_ai(
     except Exception as e:
         print(f"AI SQL generation failed: {e}")
         # Fallback to heuristic approach
-        return _heuristic_sql_fallback(question), False, "heuristic_fallback"
-
-
-def _heuristic_sql_fallback(question: str) -> str:
-    """Robust heuristic SQL generation using pattern matching."""
-    if not question or not isinstance(question, str):
-        return FALLBACK_QUERIES["invalid_input"]
-
-    q = question.lower()
-
-    # Find the best matching pattern
-    best_match = None
-    best_score = 0
-
-    for pattern in HEURISTIC_PATTERNS:
-        score = sum(1 for keyword in pattern["keywords"] if keyword in q)
-        if score > best_score:
-            best_score = score
-            best_match = pattern
-
-    # Generate SQL based on the best match
-    if best_match and best_score > 0:
-        try:
-            # Get the generator function by name
-            generator_name = best_match["generator"]
-            generator_func = globals()[generator_name]
-            sql = generator_func(q)
-            if os.getenv("DEBUG", "false").lower() == "true":
-                print(f"Heuristic generated SQL: {sql[:100]}...")
-            return sql
-        except Exception as e:
-            if os.getenv("DEBUG", "false").lower() == "true":
-                print(f"Heuristic generation failed: {e}")
-
-    # Ultimate fallback - return a safe query
-    return FALLBACK_QUERIES["no_match"]
-
-
-def _generate_revenue_query(q: str) -> str:
-    """Generate revenue-based queries."""
-    n = _months_from_question(q, default=3)
-    limit = _extract_limit(q, default=10)
-
-    return (
-        "SELECT p.name AS product, "
-        "CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS revenue "
-        "FROM order_items oi "
-        "JOIN products p ON p.id = oi.product_id "
-        "JOIN orders o ON o.id = oi.order_id "
-        "WHERE o.status <> 'CANCELLED' AND "
-        f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
-        "GROUP BY p.name ORDER BY revenue DESC LIMIT {limit};"
-    ).format(limit=limit)
-
-
-def _generate_monthly_sales_query(q: str) -> str:
-    """Generate monthly sales queries."""
-    n = _months_from_question(q, default=6)
-
-    return (
-        "SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, "
-        "CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS total_sales "
-        "FROM orders o "
-        "JOIN order_items oi ON oi.order_id = o.id "
-        "WHERE o.status <> 'CANCELLED' AND "
-        f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
-        "GROUP BY month ORDER BY month;"
-    )
-
-
-def _generate_quarterly_sales_query(q: str) -> str:
-    """Generate quarterly sales queries."""
-    n = _months_from_question(q, default=12)  # Default to 12 months for quarterly data
-
-    return (
-        "SELECT CONCAT(YEAR(o.order_date), '-Q', QUARTER(o.order_date)) AS quarter, "
-        "CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS total_sales "
-        "FROM orders o "
-        "JOIN order_items oi ON oi.order_id = o.id "
-        "WHERE o.status <> 'CANCELLED' AND "
-        f"o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
-        "GROUP BY YEAR(o.order_date), QUARTER(o.order_date) "
-        "ORDER BY YEAR(o.order_date), QUARTER(o.order_date);"
-    )
-
-
-def _generate_customer_query(q: str) -> str:
-    """Generate customer-based queries."""
-    limit = _extract_limit(q, default=10)
-
-    return (
-        "SELECT c.name AS customer, "
-        "CAST(SUM(oi.qty * oi.unit_price * (1 - oi.discount_pct/100)) AS DECIMAL(10,2)) AS total_value, "
-        "COUNT(DISTINCT o.id) AS order_count "
-        "FROM customers c "
-        "JOIN orders o ON o.customer_id = c.id "
-        "JOIN order_items oi ON oi.order_id = o.id "
-        "WHERE o.status <> 'CANCELLED' "
-        "GROUP BY c.id, c.name "
-        "ORDER BY total_value DESC LIMIT {limit};"
-    ).format(limit=limit)
-
-
-def _generate_new_customer_query(q: str) -> str:
-    """Generate new customer queries."""
-    n = _months_from_question(q, default=1)
-
-    return (
-        "SELECT c.name AS customer, c.email, o.order_date AS first_order "
-        "FROM customers c "
-        "JOIN orders o ON o.customer_id = c.id "
-        f"WHERE o.order_date >= DATE_SUB(CURDATE(), INTERVAL {n} MONTH) "
-        "GROUP BY c.id, c.name, c.email "
-        "ORDER BY first_order DESC;"
-    )
-
-
-def _generate_inventory_query(q: str) -> str:
-    """Generate inventory-related queries."""
-    return (
-        "SELECT p.name AS product, p.stock_quantity, c.name AS category "
-        "FROM products p "
-        "JOIN categories c ON c.id = p.category_id "
-        "WHERE p.stock_quantity < 50 "
-        "ORDER BY p.stock_quantity ASC;"
-    )
-
-
-def _generate_category_query(q: str) -> str:
-    """Generate category-based queries."""
-    return (
-        "SELECT c.name AS category, "
-        "COUNT(p.id) AS product_count, "
-        "CAST(AVG(p.price) AS DECIMAL(10,2)) AS avg_price "
-        "FROM categories c "
-        "LEFT JOIN products p ON p.category_id = c.id "
-        "GROUP BY c.id, c.name "
-        "ORDER BY product_count DESC;"
-    )
-
-
-def _generate_order_status_query(q: str) -> str:
-    """Generate order status queries."""
-    return (
-        "SELECT status, COUNT(*) AS order_count, "
-        "CAST(AVG(total_amount) AS DECIMAL(10,2)) AS avg_amount "
-        "FROM orders "
-        "GROUP BY status "
-        "ORDER BY order_count DESC;"
-    )
-
-
-def _generate_recent_orders_query(q: str) -> str:
-    """Generate recent orders queries."""
-    limit = _extract_limit(q, default=10)
-
-    return (
-        "SELECT o.id, c.name AS customer, o.order_date, o.status, "
-        "CAST(o.total_amount AS DECIMAL(10,2)) AS total_amount "
-        "FROM orders o "
-        "JOIN customers c ON c.id = o.customer_id "
-        "ORDER BY o.order_date DESC LIMIT {limit};"
-    ).format(limit=limit)
-
-
-def _extract_limit(q: str, default: int = 10) -> int:
-    """Extract limit number from question."""
-
-    # Look for patterns like "top 5", "best 10", "first 3"
-    patterns = [
-        r"top\s+(\d+)",
-        r"best\s+(\d+)",
-        r"first\s+(\d+)",
-        r"last\s+(\d+)",
-        r"(\d+)\s+products?",
-        r"(\d+)\s+customers?",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, q)
-        if match:
-            return int(match.group(1))
-
-    return default
+        return heuristic_sql_fallback(question), False, "heuristic_fallback"
 
 
 def answer_question(question: str, force_heuristic: bool = False) -> dict:
@@ -637,7 +452,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         # Generate SQL using AI (with fallback to heuristic) or force heuristic
         if force_heuristic:
             # Force heuristic generation
-            sql = _heuristic_sql_fallback(question)
+            sql = heuristic_sql_fallback(question)
             sql_corrected = False
             sql_source = "heuristic"
             ai_fallback_error = False
@@ -792,6 +607,8 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             answer_text = (
                 "Query executed using heuristic fallback due to AI generation failure."
             )
+        elif sql_source == "heuristic":
+            answer_text = "Query executed successfully using heuristic-generated SQL."
         else:
             answer_text = "Query executed successfully using AI-generated SQL."
 
@@ -885,7 +702,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         # Try heuristic fallback
         try:
             print("Attempting heuristic fallback...")
-            sql = _heuristic_sql_fallback(question)
+            sql = heuristic_sql_fallback(question)
             sql_source = "heuristic"
             sql_corrected = False
 
@@ -1002,26 +819,3 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             )
 
             return error_result
-
-
-def _months_from_question(q: str, default=3):
-    """Extract number of months from question text."""
-    if not q or not isinstance(q, str):
-        return default
-
-    q_lower = q.lower()
-
-    # Handle specific time periods
-    if "last year" in q_lower or "past year" in q_lower:
-        return 12
-    elif "last quarter" in q_lower or "past quarter" in q_lower:
-        return 3
-    elif "last month" in q_lower or "past month" in q_lower:
-        return 1
-    elif "last 6 months" in q_lower or "past 6 months" in q_lower:
-        return 6
-
-    # Handle "last X months" pattern
-    m = re.search(r"\blast\s+(\d{1,2})\s+months?\b", q_lower)
-    n = int(m.group(1)) if m else default
-    return max(1, min(n, 24))  # clamp 1..24
