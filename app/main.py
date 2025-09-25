@@ -147,9 +147,19 @@ def ask(
 ):
     try:
         # Validate question before processing
-        if not req.question or not isinstance(req.question, str):
+        # Enhanced validation
+        if not req.question:
             raise HTTPException(
-                status_code=400, detail="Question must be a non-empty string"
+                status_code=400, detail="Question cannot be empty or None"
+            )
+        if not isinstance(req.question, str):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Question must be a string, got {type(req.question).__name__}",
+            )
+        if not req.question.strip():
+            raise HTTPException(
+                status_code=400, detail="Question cannot be empty or whitespace only"
             )
 
         result = answer_question(req.question, force_heuristic=req.force_heuristic)
@@ -190,9 +200,14 @@ def ask_html(question: str, force_heuristic: bool = Query(False)):
     """Simple GET endpoint for testing HTML responses in browser."""
     try:
         # Validate question before processing
-        if not question or not isinstance(question, str):
+        # Enhanced validation
+        if not question:
             raise HTTPException(
-                status_code=400, detail="Question must be a non-empty string"
+                status_code=400, detail="Question cannot be empty or None"
+            )
+        if not question.strip():
+            raise HTTPException(
+                status_code=400, detail="Question cannot be empty or whitespace only"
             )
 
         result = answer_question(question, force_heuristic=force_heuristic)

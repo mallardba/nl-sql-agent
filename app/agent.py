@@ -21,6 +21,7 @@ from decimal import Decimal
 
 from .ai_handler import generate_sql_with_ai
 from .cache import get_cache, set_cache
+from .error_handler import validate_question_input
 from .error_logger import log_ai_error
 from .heuristic_handler import heuristic_sql_fallback
 from .learning import (
@@ -40,81 +41,10 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
     """Answer a natural language question using AI-powered SQL generation."""
     start_time = time.time()
 
-    # Validate input more thoroughly
-    if question is None:
-        error_result = {
-            "answer_text": "Error: Question cannot be None",
-            "sql": "",
-            "rows": [],
-            "chart_json": None,
-            "sql_source": "error",
-            "sql_corrected": False,
-            "ai_fallback_error": False,
-            "error_details": {
-                "type": "input_validation_error",
-                "description": "Question is None",
-                "received_value": "None",
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            "query_category": "unknown",
-            "category_confidence": 0.0,
-            "response_time": time.time() - start_time,
-        }
-        record_query_metrics(
-            "None", error_result, error_result["response_time"], is_ai_attempt=False
-        )
-        return error_result
-
-    if not isinstance(question, str):
-        error_result = {
-            "answer_text": f"Error: Invalid question input. Received: {type(question).__name__} - {question}",
-            "sql": "",
-            "rows": [],
-            "chart_json": None,
-            "sql_source": "error",
-            "sql_corrected": False,
-            "ai_fallback_error": False,
-            "error_details": {
-                "type": "input_validation_error",
-                "description": f"Invalid question input: {type(question).__name__}",
-                "received_value": str(question),
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            "query_category": "unknown",
-            "category_confidence": 0.0,
-            "response_time": time.time() - start_time,
-        }
-        record_query_metrics(
-            str(question),
-            error_result,
-            error_result["response_time"],
-            is_ai_attempt=False,
-        )
-        return error_result
-
-    if not question.strip():
-        error_result = {
-            "answer_text": "Error: Question cannot be empty",
-            "sql": "",
-            "rows": [],
-            "chart_json": None,
-            "sql_source": "error",
-            "sql_corrected": False,
-            "ai_fallback_error": False,
-            "error_details": {
-                "type": "input_validation_error",
-                "description": "Question is empty or whitespace only",
-                "received_value": repr(question),
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            "query_category": "unknown",
-            "category_confidence": 0.0,
-            "response_time": time.time() - start_time,
-        }
-        record_query_metrics(
-            question, error_result, error_result["response_time"], is_ai_attempt=False
-        )
-        return error_result
+    # Validate input using error handler
+    validation_error = validate_question_input(question, start_time)
+    if validation_error:
+        return validation_error
 
     # Categorize the query for better pattern recognition
     category, confidence, category_metadata = categorize_query(question)
