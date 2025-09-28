@@ -17,7 +17,6 @@ Key Features:
 
 import os
 import time
-from decimal import Decimal
 
 from .ai_handler import generate_sql_with_ai
 from .cache import get_cache, set_cache
@@ -33,10 +32,14 @@ from .metrics_recorder import (
     record_heuristic_fallback_metrics,
     record_successful_query_metrics,
 )
-from .query_utils import determine_chart_type
+from .result_processor import (
+    create_result_dictionary,
+    generate_chart_from_rows,
+    generate_simple_chart_from_rows,
+)
 from .schema_index import find_similar_questions, store_question_embedding
 from .sql_corrections import fix_sql_syntax, learn_from_error
-from .tools import get_schema_metadata, render_chart, respond, run_sql, to_jsonable
+from .tools import get_schema_metadata, respond, run_sql, to_jsonable
 
 
 def answer_question(question: str, force_heuristic: bool = False) -> dict:
@@ -133,104 +136,21 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
                 raise sql_error
 
         # Generate chart if we have numeric data
-        chart_json = None
-        if rows and len(rows) > 0:
-            cols = list(rows[0].keys())
-            if len(cols) >= 2:
-                # Find the first numeric column for y-axis
-                y_col = None
-                x_col = None
+        chart_json = generate_chart_from_rows(rows, question)
 
-                # Look for numeric column (y-axis) - prefer revenue/sales/amount columns
-                for i, col in enumerate(cols):
-                    val = rows[0][col]
-                    if isinstance(val, (int, float, Decimal)):
-                        # Prefer columns with revenue, sales, amount, total, count, etc.
-                        if any(
-                            keyword in col.lower()
-                            for keyword in [
-                                "revenue",
-                                "sales",
-                                "amount",
-                                "total",
-                                "count",
-                                "sum",
-                                "avg",
-                                "quantity",
-                                "units",
-                                "price",
-                                "unit price",
-                                "unit_price",
-                                "unit_price",
-                            ]
-                        ):
-                            y_col = col
-                            break
-
-                # If no preferred numeric column found, use first numeric column
-                if not y_col:
-                    for i, col in enumerate(cols):
-                        val = rows[0][col]
-                        if isinstance(val, (int, float, Decimal)):
-                            y_col = col
-                            break
-
-                # Look for best text column for x-axis (prefer name over id)
-                for i, col in enumerate(cols):
-                    if col != y_col:  # Don't use the same column for both axes
-                        val = rows[0][col]
-                        if isinstance(val, str):
-                            # Prefer columns with "name" over "id"
-                            if "name" in col.lower():
-                                x_col = col
-                                break
-
-                # If no "name" column found, use first text column as fallback
-                if not x_col:
-                    for i, col in enumerate(cols):
-                        if col != y_col:  # Don't use the same column for both axes
-                            val = rows[0][col]
-                            if isinstance(val, str):
-                                x_col = col
-                                break
-
-                # Generate chart if we have both x and y columns
-                if x_col and y_col:
-                    # Extract data for chart type determination
-                    x_data = [row[x_col] for row in rows]
-                    y_data = [row[y_col] for row in rows]
-
-                    # Use robust chart type selection
-                    chart_type = determine_chart_type(
-                        x_data, y_data, x_col, y_col, question
-                    )
-
-                    chart_json = render_chart(
-                        rows, spec={"type": chart_type}, x_key=x_col, y_key=y_col
-                    )
-
-        if chart_json is not None:
-            chart_json = to_jsonable(chart_json)
-
-        # Determine success message based on source
-        if sql_source == "heuristic_fallback":
-            answer_text = (
-                "Query executed using heuristic fallback due to AI generation failure."
-            )
-        elif sql_source == "heuristic":
-            answer_text = "Query executed successfully using heuristic-generated SQL."
-        else:
-            answer_text = "Query executed successfully using AI-generated SQL."
-
-        result = {
-            "answer_text": answer_text,
-            "sql": sql,
-            "rows": rows,
-            "chart_json": chart_json,
-            "sql_source": sql_source,
-            "sql_corrected": sql_corrected,
-            "ai_fallback_error": ai_fallback_error,
-        }
+        # Create result dictionary using result processor
+        result = create_result_dictionary(
+            question=question,
+            sql=sql,
+            rows=rows,
+            chart_json=chart_json,
+            sql_source=sql_source,
+            sql_corrected=sql_corrected,
+            ai_fallback_error=ai_fallback_error,
+            category=category,
+            confidence=confidence,
+            response_time=time.time() - start_time,
+        )
 
         # Store successful query in question embeddings for future learning
         if sql_source in ["ai", "heuristic"] and not sql_corrected:
@@ -250,12 +170,6 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
                 if os.getenv("DEBUG") == "true":
                     print(f"Failed to store question embedding: {e}")
 
-        # Record learning metrics
-        response_time = time.time() - start_time
-        result["query_category"] = category
-        result["category_confidence"] = confidence
-        result["response_time"] = response_time
-
         # Get query suggestions and related questions
         try:
             similar_queries = find_similar_questions(question, n_results=3)
@@ -272,7 +186,9 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             result["related_questions"] = []
 
         # Record metrics for learning (only if this wasn't already recorded as AI attempt)
-        record_successful_query_metrics(question, result, response_time, sql_source)
+        record_successful_query_metrics(
+            question, result, result["response_time"], sql_source
+        )
 
         set_cache(cache_key, to_jsonable(result))
         return respond(result)
@@ -318,73 +234,22 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             rows = run_sql(sql)
 
             # Generate chart if we have numeric data
-            chart_json = None
-            if rows and len(rows) > 0:
-                cols = list(rows[0].keys())
-                if len(cols) >= 2:
-                    # Find the first numeric column for y-axis
-                    y_col = None
-                    x_col = None
+            chart_json = generate_simple_chart_from_rows(rows)
 
-                    # Look for numeric column (y-axis) - prefer revenue/sales/amount columns
-                    for i, col in enumerate(cols):
-                        val = rows[0][col]
-                        if isinstance(val, (int, float, Decimal)):
-                            # Prefer columns with revenue, sales, amount, total, count, etc.
-                            if any(
-                                keyword in col.lower()
-                                for keyword in [
-                                    "revenue",
-                                    "sales",
-                                    "amount",
-                                    "total",
-                                    "count",
-                                    "sum",
-                                    "avg",
-                                ]
-                            ):
-                                y_col = col
-                                break
-                            elif y_col is None:  # Fallback to first numeric column
-                                y_col = col
-
-                    # Look for text column (x-axis) - prefer name columns
-                    for i, col in enumerate(cols):
-                        if col != y_col:  # Don't use the same column for both axes
-                            val = rows[0][col]
-                            if isinstance(val, str):
-                                # Prefer columns with "name" over "id"
-                                if "name" in col.lower():
-                                    x_col = col
-                                    break
-                                elif x_col is None:  # Fallback to first text column
-                                    x_col = col
-
-                    if y_col and x_col:
-                        # Chart column selection (no debug print - too verbose)
-                        x_name = x_col.lower()
-                chart_type = "line" if x_name in ("month", "date", "ym") else "bar"
-            chart_json = render_chart(
-                rows, spec={"type": chart_type}, x_key=x_col, y_key=y_col
+            # Create result dictionary using result processor
+            result = create_result_dictionary(
+                question=question,
+                sql=sql,
+                rows=rows,
+                chart_json=chart_json,
+                sql_source=sql_source,
+                sql_corrected=sql_corrected,
+                ai_fallback_error=True,  # This is a fallback due to AI failure
+                category=category,
+                confidence=confidence,
+                response_time=time.time() - start_time,
+                error_details=error_details,  # Include the original error details
             )
-
-            if chart_json is not None:
-                chart_json = to_jsonable(chart_json)
-
-            answer_text = "Query executed successfully using heuristic SQL generation."
-            result = {
-                "answer_text": answer_text,
-                "sql": sql,
-                "rows": rows,
-                "chart_json": chart_json,
-                "sql_source": sql_source,
-                "sql_corrected": sql_corrected,
-                "ai_fallback_error": True,  # This is a fallback due to AI failure
-                "error_details": error_details,  # Include the original error details
-                "query_category": category,
-                "category_confidence": confidence,
-                "response_time": time.time() - start_time,
-            }
 
             # Record the successful heuristic fallback
             record_heuristic_fallback_metrics(question, result)
@@ -394,16 +259,19 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
 
         except Exception as heuristic_error:
             print(f"Heuristic fallback also failed: {heuristic_error}")
-            # Return error response with both error details
-            error_result = {
-                "answer_text": f"Error processing question: {str(e)}",
-                "sql": "",
-                "rows": [],
-                "chart_json": None,
-                "sql_source": "error",
-                "sql_corrected": False,
-                "ai_fallback_error": False,
-                "error_details": {
+            # Create error result dictionary using result processor
+            error_result = create_result_dictionary(
+                question=question,
+                sql="",
+                rows=[],
+                chart_json=None,
+                sql_source="error",
+                sql_corrected=False,
+                ai_fallback_error=False,
+                category=category,
+                confidence=confidence,
+                response_time=time.time() - start_time,
+                error_details={
                     "type": "complete_failure",
                     "original_exception": error_details,
                     "heuristic_fallback_exception": {
@@ -412,10 +280,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     },
                 },
-                "query_category": category,
-                "category_confidence": confidence,
-                "response_time": time.time() - start_time,
-            }
+            )
 
             # Record error metrics
             record_complete_failure_metrics(question, error_result)
