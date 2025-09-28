@@ -24,12 +24,14 @@ from .cache import get_cache, set_cache
 from .error_handler import validate_question_input
 from .error_logger import log_ai_error
 from .heuristic_handler import heuristic_sql_fallback
-from .learning import (
-    categorize_query,
-    get_query_suggestions,
-    get_related_questions,
-    record_error_metrics,
-    record_query_metrics,
+from .learning import categorize_query, get_query_suggestions, get_related_questions
+from .metrics_recorder import (
+    record_ai_attempt_metrics,
+    record_cache_hit_metrics,
+    record_complete_failure_metrics,
+    record_error_metrics_with_context,
+    record_heuristic_fallback_metrics,
+    record_successful_query_metrics,
 )
 from .query_utils import determine_chart_type
 from .schema_index import find_similar_questions, store_question_embedding
@@ -62,7 +64,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         # Record cache hit metrics
         response_time = time.time() - start_time
         cached["response_time"] = response_time
-        record_query_metrics(question, cached, response_time, is_ai_attempt=False)
+        record_cache_hit_metrics(question, cached, response_time)
 
         return cached
 
@@ -86,20 +88,9 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
 
         # Record AI attempt (even if it failed and fell back to heuristic)
         if sql_source in ["ai", "heuristic_fallback"]:
-            # This was an AI attempt, record it
-            ai_attempt_result = {
-                "answer_text": "AI attempt (may have failed)",
-                "sql": sql,
-                "rows": [],
-                "chart_json": None,
-                "sql_source": "ai",  # Always record as AI attempt
-                "sql_corrected": False,
-                "ai_fallback_error": ai_fallback_error,
-                "query_category": category,
-                "category_confidence": confidence,
-                "response_time": 0,  # Will be updated later
-            }
-            record_query_metrics(question, ai_attempt_result, 0, is_ai_attempt=True)
+            record_ai_attempt_metrics(
+                question, sql, ai_fallback_error, category, confidence
+            )
 
         # Execute the SQL with error handling
         try:
@@ -281,8 +272,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             result["related_questions"] = []
 
         # Record metrics for learning (only if this wasn't already recorded as AI attempt)
-        if sql_source != "heuristic_fallback":
-            record_query_metrics(question, result, response_time, is_ai_attempt=False)
+        record_successful_query_metrics(question, result, response_time, sql_source)
 
         set_cache(cache_key, to_jsonable(result))
         return respond(result)
@@ -316,7 +306,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         )
 
         # Record error metrics
-        record_error_metrics("ai_generation_exception", str(e))
+        record_error_metrics_with_context("ai_generation_exception", str(e))
 
         # Try heuristic fallback
         try:
@@ -397,9 +387,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             }
 
             # Record the successful heuristic fallback
-            record_query_metrics(
-                question, result, result["response_time"], is_ai_attempt=False
-            )
+            record_heuristic_fallback_metrics(question, result)
 
             set_cache(cache_key, to_jsonable(result))
             return respond(result)
@@ -430,11 +418,6 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             }
 
             # Record error metrics
-            record_query_metrics(
-                question,
-                error_result,
-                error_result["response_time"],
-                is_ai_attempt=False,
-            )
+            record_complete_failure_metrics(question, error_result)
 
             return error_result
