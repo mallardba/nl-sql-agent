@@ -2,7 +2,7 @@ import os
 import re
 from typing import List, Tuple
 
-from .config import (
+from ..config import (
     AGGREGATE_FUNCTIONS,
     COMMON_AMBIGUOUS_COLUMNS,
     LEARNED_PATTERNS,

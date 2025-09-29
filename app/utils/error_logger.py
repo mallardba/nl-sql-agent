@@ -22,7 +22,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from .enums import ErrorType
+from ..enums import ErrorType
 
 
 def _rotate_logs_if_needed(log_file: str, max_size_mb: int = 10):

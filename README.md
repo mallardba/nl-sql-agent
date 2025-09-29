@@ -244,21 +244,64 @@ The application includes a comprehensive e-commerce schema with:
 ### Project Structure
 ```
 nl-sql-agent/
-├── app/
-│   ├── main.py          # FastAPI application and routes
-│   ├── agent.py         # AI-powered SQL generation
-│   ├── tools.py         # SQL execution and utilities
-│   ├── charts.py        # Data visualization components
-│   ├── schema_index.py  # ChromaDB embeddings system
-│   ├── cache.py         # Query caching implementation
-│   └── models.py        # Pydantic data models
+├── app/                    # Main application package
+│   ├── main.py            # FastAPI application and routes
+│   ├── agent.py           # Core agent logic and orchestration
+│   ├── models.py          # Pydantic data models
+│   ├── enums.py           # Type-safe enumerations
+│   ├── config/            # Configuration modules
+│   │   ├── chart_type_rules.py
+│   │   ├── heuristic_patterns.py
+│   │   ├── metrics_config.py
+│   │   ├── query_categories.py
+│   │   ├── sql_correction_patterns.py
+│   │   ├── suggestion_patterns.py
+│   │   └── test_questions.py
+│   ├── core/              # Core business logic
+│   │   ├── ai_handler.py      # AI/LLM integration
+│   │   ├── heuristic_handler.py   # Heuristic SQL generation
+│   │   ├── heuristic_generators.py # SQL generator functions
+│   │   ├── query_utils.py     # Query utilities and helpers
+│   │   └── sql_corrections.py # SQL error correction
+│   ├── data/              # Data processing and storage
+│   │   ├── cache.py           # Query caching system
+│   │   ├── result_processor.py # Chart generation and processing
+│   │   ├── schema_index.py    # ChromaDB embeddings system
+│   │   └── tools.py           # Database tools and SQL execution
+│   ├── learning/          # Learning and metrics
+│   │   ├── learning.py        # Query categorization and learning
+│   │   ├── metrics_recorder.py # Metrics recording system
+│   │   └── dashboard_utils.py # Dashboard data processing
+│   ├── ui/                # User interface components
+│   │   ├── charts.py          # Chart rendering and HTML generation
+│   │   ├── templates.py       # HTML template processing
+│   │   └── templates/         # HTML template files
+│   │       ├── error_page.html
+│   │       ├── learning_dashboard.html
+│   │       └── query_results.html
+│   └── utils/             # Utility modules
+│       ├── error_handler.py   # Error handling and validation
+│       ├── error_logger.py    # Error logging system
+│       └── prompts.py         # AI prompt templates
 ├── db/
-│   └── init.sql         # Database schema and seed data
-├── tests/
+│   └── init.sql           # Database schema and seed data
+├── docs/                  # Documentation
+│   ├── explanations/      # Technical explanations
+│   └── requirements-analysis.md
+├── scripts/               # Utility scripts
+│   ├── ask/               # Question asking scripts
+│   ├── learning/          # Learning system scripts
+│   ├── server/            # Server management scripts
+│   ├── testing/           # Testing scripts
+│   └── utils/             # Utility scripts
+├── tests/                 # Test suite
 │   ├── test_end_to_end.py
-│   └── test_sql_generation.py
-├── requirements.txt
-├── docker-compose.yml
+│   ├── test_sql_generation.py
+│   └── conftest.py
+├── requirements.txt       # Python dependencies
+├── requirements-dev.txt   # Development dependencies
+├── docker-compose.yml     # Docker configuration
+├── pytest.ini           # Pytest configuration
 └── README.md
 ```
 

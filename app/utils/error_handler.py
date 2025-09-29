@@ -8,8 +8,8 @@ Handles input validation, error result creation, and error metrics recording.
 import time
 from typing import Any, Dict, Optional
 
-from .enums import QueryCategory, SQLSource
-from .learning import record_query_metrics
+from ..enums import QueryCategory, SQLSource
+from ..learning import record_query_metrics
 
 
 def create_error_result(

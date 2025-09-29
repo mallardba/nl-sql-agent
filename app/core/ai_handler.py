@@ -4,9 +4,9 @@ from typing import Any, Dict, Tuple
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from .enums import SQLSource
+from ..data import find_similar_questions, find_similar_schema
+from ..enums import SQLSource
 from .heuristic_handler import heuristic_sql_fallback
-from .schema_index import find_similar_questions, find_similar_schema
 from .sql_corrections import fix_sql_syntax
 
 # LangChain imports (will be available after pip install)
@@ -15,7 +15,7 @@ try:
     from langchain.schema import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
 
-    from .schema_index import find_similar_questions, find_similar_schema
+    from ..data import find_similar_questions, find_similar_schema
 
     LANGCHAIN_AVAILABLE = True
 except ImportError:

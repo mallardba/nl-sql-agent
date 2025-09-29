@@ -1,6 +1,6 @@
 from typing import Any, List
 
-from .config import (
+from ..config import (
     CATEGORICAL_KEYWORDS,
     CHART_THRESHOLDS,
     LINE_CHART_KEYWORDS,
@@ -9,7 +9,7 @@ from .config import (
     TIME_KEYWORDS,
     TIME_PATTERNS,
 )
-from .enums import ChartType
+from ..enums import ChartType
 
 
 def determine_chart_type(

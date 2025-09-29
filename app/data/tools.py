@@ -29,7 +29,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from .enums import ChartType
+from ..enums import ChartType
 
 load_dotenv()
 DATABASE_URL = os.getenv(

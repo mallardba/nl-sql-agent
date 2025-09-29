@@ -10,7 +10,8 @@ import sys
 
 def run_server():
     """Run uvicorn in production mode."""
-    print("🚀 Starting NL-SQL Agent Server")
+    print()
+    print("🚀 Starting Local NL-SQL Agent Server")
     print("=" * 50)
     print("Server will be available at: http://localhost:8000")
     print("API documentation: http://localhost:8000/docs")

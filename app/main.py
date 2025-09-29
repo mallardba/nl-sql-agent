@@ -24,19 +24,24 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from .agent import answer_question
-from .charts import create_complete_html_page
-from .dashboard_utils import process_dashboard_data
-from .error_logger import (
-    clear_error_logs,
-    get_error_logs,
-    get_error_summary,
-    get_log_stats,
+from .data import (
+    export_to_csv,
+    get_embedding_stats,
+    get_schema_metadata,
+    initialize_schema_embeddings,
 )
-from .learning import clear_learning_metrics, get_learning_metrics
+from .learning import (
+    clear_learning_metrics,
+    get_learning_metrics,
+    process_dashboard_data,
+)
 from .models import AskRequest, ExportRequest
-from .schema_index import get_embedding_stats, initialize_schema_embeddings
-from .templates import format_error_page_template, format_learning_dashboard_template
-from .tools import export_to_csv, get_schema_metadata
+from .ui import (
+    create_complete_html_page,
+    format_error_page_template,
+    format_learning_dashboard_template,
+)
+from .utils import clear_error_logs, get_error_logs, get_error_summary, get_log_stats
 
 # Global debug flag - can be set via environment variable or command line
 DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"

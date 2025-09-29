@@ -6,7 +6,7 @@ Centralizes all metrics recording logic for the SQL agent system.
 
 from typing import Any, Dict
 
-from .enums import SQLSource
+from ..enums import SQLSource
 from .learning import record_error_metrics, record_query_metrics
 
 

@@ -18,7 +18,8 @@ def run_debug_server():
         # Set debug environment variable
         os.environ["DEBUG"] = "true"
 
-        print("🚀 Starting NL-SQL Agent in DEBUG mode")
+        print()
+        print("🚀 Starting Local NL-SQL Agent in DEBUG mode")
         print("=" * 50)
         print("Debug output will show:")
         print("  • AI generated SQL queries")

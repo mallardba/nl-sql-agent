@@ -18,14 +18,30 @@ Key Features:
 import os
 import time
 
-from .ai_handler import generate_sql_with_ai
-from .cache import get_cache, set_cache
+from .core import (
+    fix_sql_syntax,
+    generate_sql_with_ai,
+    heuristic_sql_fallback,
+    learn_from_error,
+)
+from .data import (
+    create_result_dictionary,
+    find_similar_questions,
+    generate_chart_from_rows,
+    generate_simple_chart_from_rows,
+    get_cache,
+    get_schema_metadata,
+    respond,
+    run_sql,
+    set_cache,
+    store_question_embedding,
+    to_jsonable,
+)
 from .enums import ErrorType, QueryCategory, SQLSource
-from .error_handler import validate_question_input
-from .error_logger import log_ai_error
-from .heuristic_handler import heuristic_sql_fallback
-from .learning import categorize_query, get_query_suggestions, get_related_questions
-from .metrics_recorder import (
+from .learning import (
+    categorize_query,
+    get_query_suggestions,
+    get_related_questions,
     record_ai_attempt_metrics,
     record_cache_hit_metrics,
     record_complete_failure_metrics,
@@ -33,14 +49,7 @@ from .metrics_recorder import (
     record_heuristic_fallback_metrics,
     record_successful_query_metrics,
 )
-from .result_processor import (
-    create_result_dictionary,
-    generate_chart_from_rows,
-    generate_simple_chart_from_rows,
-)
-from .schema_index import find_similar_questions, store_question_embedding
-from .sql_corrections import fix_sql_syntax, learn_from_error
-from .tools import get_schema_metadata, respond, run_sql, to_jsonable
+from .utils import log_ai_error, validate_question_input
 
 
 def answer_question(question: str, force_heuristic: bool = False) -> dict:

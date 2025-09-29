@@ -19,14 +19,14 @@ Key Features:
 
 from typing import Any, Dict, List, Tuple
 
-from .cache import delete_cache, get_cache, set_cache
-from .config import (
+from ..config import (
     DEFAULT_METRICS_CONFIG,
     GENERAL_SUGGESTIONS,
     QUERY_CATEGORIES,
     SUGGESTION_PATTERNS,
 )
-from .enums import ErrorType, QueryCategory, SQLSource
+from ..data.cache import delete_cache, get_cache, set_cache
+from ..enums import ErrorType, QueryCategory, SQLSource
 
 
 class QueryCategorizer:

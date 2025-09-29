@@ -7,7 +7,7 @@ Provides robust fallback when AI generation fails or when forced.
 
 import os
 
-from .config import FALLBACK_QUERIES, HEURISTIC_PATTERNS
+from ..config import FALLBACK_QUERIES, HEURISTIC_PATTERNS
 from .heuristic_generators import (
     _generate_category_query,
     _generate_customer_query,

@@ -8,8 +8,8 @@ column detection, and result dictionary creation for the SQL agent system.
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-from .enums import ChartType, QueryCategory, SQLSource
-from .query_utils import determine_chart_type
+from ..core.query_utils import determine_chart_type
+from ..enums import ChartType, QueryCategory, SQLSource
 from .tools import render_chart, to_jsonable
 
 
