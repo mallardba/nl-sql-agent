@@ -20,6 +20,7 @@ import time
 
 from .ai_handler import generate_sql_with_ai
 from .cache import get_cache, set_cache
+from .enums import ErrorType, QueryCategory, SQLSource
 from .error_handler import validate_question_input
 from .error_logger import log_ai_error
 from .heuristic_handler import heuristic_sql_fallback
@@ -52,16 +53,22 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         return validation_error
 
     # Categorize the query for better pattern recognition
-    category, confidence, category_metadata = categorize_query(question)
+    category_str, confidence, category_metadata = categorize_query(question)
+
+    # Convert string category to enum
+    try:
+        category = QueryCategory(category_str)
+    except ValueError:
+        category = QueryCategory.UNKNOWN
 
     q = question.lower()
     cache_key = f"q::{q.strip()}"
     cached = get_cache(cache_key)
     if cached:
         # Add source info for cached results
-        cached["sql_source"] = "cache"
+        cached["sql_source"] = SQLSource.CACHE.value
         cached["sql_corrected"] = False
-        cached["query_category"] = category
+        cached["query_category"] = category.value
         cached["category_confidence"] = confidence
 
         # Record cache hit metrics
@@ -80,17 +87,17 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             # Force heuristic generation
             sql = heuristic_sql_fallback(question)
             sql_corrected = False
-            sql_source = "heuristic"
+            sql_source = SQLSource.HEURISTIC
             ai_fallback_error = False
         else:
             # Generate SQL using AI (with fallback to heuristic)
             sql, sql_corrected, sql_source = generate_sql_with_ai(question, schema_info)
 
             # Track if this was a fallback due to AI failure
-            ai_fallback_error = sql_source == "heuristic_fallback"
+            ai_fallback_error = sql_source == SQLSource.HEURISTIC_FALLBACK
 
         # Record AI attempt (even if it failed and fell back to heuristic)
-        if sql_source in ["ai", "heuristic_fallback"]:
+        if sql_source in [SQLSource.AI, SQLSource.HEURISTIC_FALLBACK]:
             record_ai_attempt_metrics(
                 question, sql, ai_fallback_error, category, confidence
             )
@@ -100,7 +107,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             rows = run_sql(sql)
         except Exception as sql_error:
             sql_error_details = {
-                "type": "sql_execution_error",
+                "type": ErrorType.SQL_EXECUTION_ERROR.value,
                 "exception_type": type(sql_error).__name__,
                 "exception_message": str(sql_error),
                 "sql_attempted": sql,
@@ -153,7 +160,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         )
 
         # Store successful query in question embeddings for future learning
-        if sql_source in ["ai", "heuristic"] and not sql_corrected:
+        if sql_source in [SQLSource.AI, SQLSource.HEURISTIC] and not sql_corrected:
             try:
 
                 store_question_embedding(
@@ -174,7 +181,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         try:
             similar_queries = find_similar_questions(question, n_results=3)
             result["query_suggestions"] = get_query_suggestions(
-                question, category, n_suggestions=3
+                question, category.value, n_suggestions=3
             )
             result["related_questions"] = get_related_questions(
                 question, similar_queries
@@ -200,7 +207,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             error_details["question"] = question
         else:
             error_details = {
-                "type": "ai_generation_exception",
+                "type": ErrorType.AI_GENERATION_EXCEPTION.value,
                 "exception_type": type(e).__name__,
                 "exception_message": str(e),
                 "question": question,
@@ -214,7 +221,7 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
             question=question,
             sql=error_details.get("generated_sql", ""),
             error_message=str(e),
-            error_type="ai_generation_exception",
+            error_type=ErrorType.AI_GENERATION_EXCEPTION.value,
             additional_context={
                 "error_details": error_details,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -222,13 +229,15 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
         )
 
         # Record error metrics
-        record_error_metrics_with_context("ai_generation_exception", str(e))
+        record_error_metrics_with_context(
+            ErrorType.AI_GENERATION_EXCEPTION.value, str(e)
+        )
 
         # Try heuristic fallback
         try:
             print("Attempting heuristic fallback...")
             sql = heuristic_sql_fallback(question)
-            sql_source = "heuristic"
+            sql_source = SQLSource.HEURISTIC
             sql_corrected = False
 
             rows = run_sql(sql)
@@ -265,14 +274,14 @@ def answer_question(question: str, force_heuristic: bool = False) -> dict:
                 sql="",
                 rows=[],
                 chart_json=None,
-                sql_source="error",
+                sql_source=SQLSource.ERROR,
                 sql_corrected=False,
                 ai_fallback_error=False,
                 category=category,
                 confidence=confidence,
                 response_time=time.time() - start_time,
                 error_details={
-                    "type": "complete_failure",
+                    "type": ErrorType.COMPLETE_FAILURE.value,
                     "original_exception": error_details,
                     "heuristic_fallback_exception": {
                         "exception_type": type(heuristic_error).__name__,

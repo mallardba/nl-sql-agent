@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
+from .enums import SQLSource
 from .heuristic_handler import heuristic_sql_fallback
 from .schema_index import find_similar_questions, find_similar_schema
 from .sql_corrections import fix_sql_syntax
@@ -204,9 +205,9 @@ def generate_sql_with_ai(
         if sql.count("(") != sql.count(")"):
             raise ValueError("Unmatched parentheses in SQL query")
 
-        return sql, corrected, "ai"
+        return sql, corrected, SQLSource.AI
 
     except Exception as e:
         print(f"AI SQL generation failed: {e}")
         # Fallback to heuristic approach
-        return heuristic_sql_fallback(question), False, "heuristic_fallback"
+        return heuristic_sql_fallback(question), False, SQLSource.HEURISTIC_FALLBACK

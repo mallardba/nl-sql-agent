@@ -6,6 +6,7 @@ Centralizes all metrics recording logic for the SQL agent system.
 
 from typing import Any, Dict
 
+from .enums import SQLSource
 from .learning import record_error_metrics, record_query_metrics
 
 
@@ -25,7 +26,7 @@ def record_ai_attempt_metrics(
         "sql": sql,
         "rows": [],
         "chart_json": None,
-        "sql_source": "ai",
+        "sql_source": SQLSource.AI.value,
         "sql_corrected": False,
         "ai_fallback_error": ai_fallback_error,
         "query_category": category,
@@ -36,10 +37,10 @@ def record_ai_attempt_metrics(
 
 
 def record_successful_query_metrics(
-    question: str, result: Dict[str, Any], response_time: float, sql_source: str
+    question: str, result: Dict[str, Any], response_time: float, sql_source: SQLSource
 ) -> None:
     """Record metrics for successful queries."""
-    if sql_source != "heuristic_fallback":
+    if sql_source != SQLSource.HEURISTIC_FALLBACK:
         record_query_metrics(question, result, response_time, is_ai_attempt=False)
 
 

@@ -9,6 +9,7 @@ from .config import (
     TIME_KEYWORDS,
     TIME_PATTERNS,
 )
+from .enums import ChartType
 
 
 def determine_chart_type(
@@ -43,19 +44,19 @@ def determine_chart_type(
             "quarter" in x_name_lower
             and unique_x_values <= CHART_THRESHOLDS["quarter_max_points"]
         ):
-            return "bar"
+            return ChartType.BAR.value
         # For other time data, use line chart
-        return "line"
+        return ChartType.LINE.value
 
     # 2. Question context analysis
     if any(keyword in question_lower for keyword in LINE_CHART_KEYWORDS):
-        return "line"
+        return ChartType.LINE.value
 
     if any(keyword in question_lower for keyword in SCATTER_CHART_KEYWORDS):
-        return "scatter"
+        return ChartType.SCATTER.value
 
     if any(keyword in question_lower for keyword in PIE_CHART_KEYWORDS):
-        return "pie"
+        return ChartType.PIE.value
 
     # 3. Data distribution analysis
 
@@ -77,7 +78,7 @@ def determine_chart_type(
                 )
 
                 if not has_time_pattern:
-                    return "pie"
+                    return ChartType.PIE.value
         except (ValueError, TypeError):
             pass
 
@@ -91,16 +92,16 @@ def determine_chart_type(
             numeric_x = [float(x) for x in x_data if x is not None]
             numeric_y = [float(y) for y in y_data if y is not None]
             if len(numeric_x) == len(x_data) and len(numeric_y) == len(y_data):
-                return "scatter"
+                return ChartType.SCATTER.value
         except (ValueError, TypeError):
             pass
 
     # 4. Column name analysis
     if any(keyword in x_name_lower for keyword in CATEGORICAL_KEYWORDS):
         if unique_x_values <= 6:
-            return "pie"
+            return ChartType.PIE.value
         else:
-            return "bar"
+            return ChartType.BAR.value
 
     # 5. Default to bar chart
-    return "bar"
+    return ChartType.BAR.value

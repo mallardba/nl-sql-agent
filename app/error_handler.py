@@ -8,6 +8,7 @@ Handles input validation, error result creation, and error metrics recording.
 import time
 from typing import Any, Dict, Optional
 
+from .enums import QueryCategory, SQLSource
 from .learning import record_query_metrics
 
 
@@ -37,11 +38,11 @@ def create_error_result(
         "sql": "",
         "rows": [],
         "chart_json": None,
-        "sql_source": "error",
+        "sql_source": SQLSource.ERROR.value,
         "sql_corrected": False,
         "ai_fallback_error": False,
         "error_details": error_details,
-        "query_category": "unknown",
+        "query_category": QueryCategory.UNKNOWN.value,
         "category_confidence": 0.0,
         "response_time": time.time() - start_time,
     }

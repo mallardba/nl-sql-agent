@@ -26,6 +26,7 @@ from .config import (
     QUERY_CATEGORIES,
     SUGGESTION_PATTERNS,
 )
+from .enums import ErrorType, QueryCategory, SQLSource
 
 
 class QueryCategorizer:
@@ -42,7 +43,7 @@ class QueryCategorizer:
             Tuple of (category, confidence_score, metadata)
         """
         if not question or not isinstance(question, str):
-            return "unknown", 0.0, {}
+            return QueryCategory.UNKNOWN.value, 0.0, {}
 
         question_lower = question.lower()
         scores = {}
@@ -109,31 +110,34 @@ class LearningMetrics:
         self.metrics["response_times"].append(response_time)
 
         # Track success - use same criteria as test suite: SQL executed without throwing exception
-        # Success = not an error response (sql_source != "error") and no critical error details
-        sql_source = result.get("sql_source", "unknown")
+        # Success = not an error response (sql_source != SQLSource.ERROR) and no critical error details
+        sql_source = result.get("sql_source", SQLSource.ERROR.value)
         has_critical_error = "error_details" in result and result.get(
             "error_details", {}
-        ).get("type") in ["complete_failure", "sql_execution_error"]
-        is_successful = sql_source != "error" and not has_critical_error
+        ).get("type") in [
+            ErrorType.COMPLETE_FAILURE.value,
+            ErrorType.SQL_EXECUTION_ERROR.value,
+        ]
+        is_successful = sql_source != SQLSource.ERROR.value and not has_critical_error
 
         if is_successful:
             self.metrics["successful_queries"] += 1
 
         # Track source (sql_source already defined above)
-        if sql_source == "ai":
+        if sql_source == SQLSource.AI.value:
             self.metrics["ai_generated"] += 1
-        elif sql_source == "heuristic":
+        elif sql_source == SQLSource.HEURISTIC.value:
             self.metrics["heuristic_fallback"] += 1
-        elif sql_source == "cache":
+        elif sql_source == SQLSource.CACHE.value:
             self.metrics["cache_hits"] += 1
 
         # Track source totals for accuracy calculation
         if "source_totals" not in self.metrics:
             self.metrics["source_totals"] = {
-                "ai": 0,
-                "heuristic": 0,
-                "cache": 0,
-                "error": 0,
+                SQLSource.AI.value: 0,
+                SQLSource.HEURISTIC.value: 0,
+                SQLSource.CACHE.value: 0,
+                SQLSource.ERROR.value: 0,
             }
         if sql_source not in self.metrics["source_totals"]:
             self.metrics["source_totals"][sql_source] = 0
@@ -222,7 +226,12 @@ class LearningMetrics:
 
         # Calculate accuracy by source as fractions/percentages
         source_totals = metrics.get(
-            "source_totals", {"ai": 0, "heuristic": 0, "cache": 0}
+            "source_totals",
+            {
+                SQLSource.AI.value: 0,
+                SQLSource.HEURISTIC.value: 0,
+                SQLSource.CACHE.value: 0,
+            },
         )
         accuracy_by_source = {}
         for source, successful_count in metrics["accuracy_by_source"].items():

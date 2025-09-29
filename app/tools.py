@@ -29,6 +29,8 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from .enums import ChartType
+
 load_dotenv()
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "mysql+pymysql://root:root@localhost:3306/sales"
@@ -88,7 +90,7 @@ def render_chart(
     x_key: Optional[str] = None,
     y_key: Optional[str] = None,
 ) -> Dict[str, Any]:
-    spec = spec or {"type": "bar"}
+    spec = spec or {"type": ChartType.BAR.value}
     if not rows or len(rows) == 0:
         return {}
 
@@ -109,15 +111,15 @@ def render_chart(
 
     # Create figure using lower-level Plotly API
     fig = go.Figure()
-    chart_type = spec.get("type", "bar")
+    chart_type = spec.get("type", ChartType.BAR.value)
 
-    if chart_type == "line":
+    if chart_type == ChartType.LINE.value:
         fig.add_trace(go.Scatter(x=x_data, y=y_data, mode="lines+markers", name=y_key))
-    elif chart_type == "pie":
+    elif chart_type == ChartType.PIE.value:
         fig.add_trace(go.Pie(labels=x_data, values=y_data, name=y_key))
-    elif chart_type == "scatter":
+    elif chart_type == ChartType.SCATTER.value:
         fig.add_trace(go.Scatter(x=x_data, y=y_data, mode="markers", name=y_key))
-    elif chart_type == "area":
+    elif chart_type == ChartType.AREA.value:
         fig.add_trace(
             go.Scatter(x=x_data, y=y_data, mode="lines", fill="tonexty", name=y_key)
         )
@@ -125,7 +127,7 @@ def render_chart(
         fig.add_trace(go.Bar(x=x_data, y=y_data, name=y_key))
 
     # Update layout based on chart type
-    if chart_type == "pie":
+    if chart_type == ChartType.PIE.value:
         fig.update_layout(
             title=f"{y_key} by {x_key}",
             showlegend=True,

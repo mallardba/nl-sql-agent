@@ -37,5 +37,8 @@ def database_url() -> str:
 async def client(app) -> AsyncGenerator:
     if httpx is None:
         pytest.skip("httpx not installed")
-    async with httpx.AsyncClient(app=app, base_url="http://testserver") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as ac:
         yield ac

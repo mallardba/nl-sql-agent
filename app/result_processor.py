@@ -8,6 +8,7 @@ column detection, and result dictionary creation for the SQL agent system.
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
+from .enums import ChartType, QueryCategory, SQLSource
 from .query_utils import determine_chart_type
 from .tools import render_chart, to_jsonable
 
@@ -187,9 +188,11 @@ def generate_simple_chart_from_rows(
 
     # Simple chart type selection
     x_name = x_col.lower()
-    chart_type = "line" if x_name in ("month", "date", "ym") else "bar"
+    chart_type = ChartType.LINE if x_name in ("month", "date", "ym") else ChartType.BAR
 
-    chart_json = render_chart(rows, spec={"type": chart_type}, x_key=x_col, y_key=y_col)
+    chart_json = render_chart(
+        rows, spec={"type": chart_type.value}, x_key=x_col, y_key=y_col
+    )
 
     if chart_json is not None:
         chart_json = to_jsonable(chart_json)
@@ -197,23 +200,25 @@ def generate_simple_chart_from_rows(
     return chart_json
 
 
-def determine_answer_text(sql_source: str) -> str:
+def determine_answer_text(sql_source: SQLSource) -> str:
     """
     Determine the appropriate answer text based on SQL source.
 
     Args:
-        sql_source: Source of the SQL query (ai, heuristic, heuristic_fallback, error)
+        sql_source: Source of the SQL query (SQLSource enum)
 
     Returns:
         Appropriate answer text message
     """
-    if sql_source == "heuristic_fallback":
+    if sql_source == SQLSource.HEURISTIC_FALLBACK:
         return "Query executed using heuristic fallback due to AI generation failure."
-    elif sql_source == "heuristic":
+    elif sql_source == SQLSource.HEURISTIC:
         return "Query executed successfully using heuristic-generated SQL."
-    elif sql_source == "error":
+    elif sql_source == SQLSource.ERROR:
         return "Error processing question: Unable to generate valid SQL query."
-    else:  # This covers "ai" case
+    elif sql_source == SQLSource.CACHE:
+        return "Query executed successfully using cached results."
+    else:  # This covers SQLSource.AI case
         return "Query executed successfully using AI-generated SQL."
 
 
@@ -221,10 +226,10 @@ def create_result_dictionary(
     question: str,
     sql: str,
     rows: List[Dict[str, Any]],
-    sql_source: str,
+    sql_source: SQLSource,
     sql_corrected: bool = False,
     ai_fallback_error: bool = False,
-    category: str = None,
+    category: QueryCategory = None,
     confidence: float = None,
     response_time: float = None,
     chart_json: Optional[Dict[str, Any]] = None,
@@ -269,7 +274,7 @@ def create_result_dictionary(
         "sql": sql,
         "rows": rows,
         "chart_json": chart_json,
-        "sql_source": sql_source,
+        "sql_source": sql_source.value,  # Use enum value for JSON serialization
         "sql_corrected": sql_corrected,
         "ai_fallback_error": ai_fallback_error,
     }
@@ -278,7 +283,7 @@ def create_result_dictionary(
 
     # Record learning metrics
     if category is not None:
-        result["query_category"] = category
+        result["query_category"] = category.value
     if confidence is not None:
         result["category_confidence"] = confidence
     if response_time is not None:

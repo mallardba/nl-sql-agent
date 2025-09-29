@@ -22,6 +22,8 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from .enums import ErrorType
+
 
 def _rotate_logs_if_needed(log_file: str, max_size_mb: int = 10):
     """Rotate log files if they exceed the maximum size."""
@@ -63,7 +65,7 @@ def log_ai_error(
     question: str,
     sql: str,
     error_message: str,
-    error_type: str = "ai_generation_exception",
+    error_type: str = ErrorType.AI_GENERATION_EXCEPTION.value,
     additional_context: Optional[Dict[str, Any]] = None,
 ):
     """
@@ -187,7 +189,7 @@ def get_error_summary() -> Dict[str, Any]:
         # Count error types
         error_types = {}
         for log in logs:
-            error_type = log.get("error_type", "unknown")
+            error_type = log.get("error_type", ErrorType.AI_GENERATION_EXCEPTION.value)
             error_types[error_type] = error_types.get(error_type, 0) + 1
 
         # Get recent errors (last 10)

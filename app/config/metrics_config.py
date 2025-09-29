@@ -8,6 +8,13 @@ Used by LearningSystem to initialize metrics tracking.
 from collections import defaultdict
 from typing import Any, Dict
 
+try:
+    # Relative path import works for Uvicorn
+    from ..enums import SQLSource
+except ImportError:
+    # Fallback for pytest
+    from enums import SQLSource
+
 DEFAULT_METRICS_CONFIG: Dict[str, Any] = {
     "total_queries": 0,
     "successful_queries": 0,
@@ -19,6 +26,16 @@ DEFAULT_METRICS_CONFIG: Dict[str, Any] = {
     "category_performance": defaultdict(lambda: {"total": 0, "successful": 0}),
     "query_complexity": defaultdict(int),
     "response_times": [],
-    "accuracy_by_source": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
-    "source_totals": {"ai": 0, "heuristic": 0, "cache": 0, "error": 0},
+    "accuracy_by_source": {
+        SQLSource.AI.value: 0,
+        SQLSource.HEURISTIC.value: 0,
+        SQLSource.CACHE.value: 0,
+        SQLSource.ERROR.value: 0,
+    },
+    "source_totals": {
+        SQLSource.AI.value: 0,
+        SQLSource.HEURISTIC.value: 0,
+        SQLSource.CACHE.value: 0,
+        SQLSource.ERROR.value: 0,
+    },
 }
