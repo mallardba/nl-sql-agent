@@ -16,7 +16,7 @@ import requests
 
 def ask_and_open_file(
     question: Optional[str] = None,
-    output_file: str = "response.html",
+    output_file: str = "data/outputs/response.html",
     force_heuristic: bool = False,
 ) -> None:
     """
@@ -51,6 +51,8 @@ def ask_and_open_file(
         if response.status_code == 200:
             # Save HTML content to file
             output_path = Path(output_file)
+            # Ensure output directory exists
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(response.text, encoding="utf-8")
             print(f"✅ Response saved to: {output_path.absolute()}")
 
@@ -88,8 +90,8 @@ def main():
     )
     parser.add_argument(
         "--output-file",
-        default="response.html",
-        help="The filename to save the HTML response to (default: response.html).",
+        default="data/outputs/response.html",
+        help="The filename to save the HTML response to (default: data/outputs/response.html).",
     )
     parser.add_argument(
         "question",

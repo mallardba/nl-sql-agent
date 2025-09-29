@@ -22,25 +22,24 @@ __pycache__/
 Thumbs.db
 
 # Project specific
-response.html
-test_failure_results.json
-test_heuristic_generation_results.json
-test_results.json
-chroma_db/
-*.log
-# tests/temp/test_*.py
-# tests/temp/test_*.sh
-logs/
+coverage/
+tests/temp/
+.coveragerc
+
+data/chroma_db/
+data/logs/
+data/outputs/response.html
+data/outputs/test_failure_results.json
+data/outputs/test_heuristic_generation_results.json
+data/outputs/test_results.json
+
+# Legacy paths (kept for safety)
+.coverage
 
 # Test files
 test_*.py
 test_*.sh
 test_*.bat
-
-# Coverage files
-.coverage
-coverage.xml
-htmlcov/
 
 # Temporary files
 *.tmp

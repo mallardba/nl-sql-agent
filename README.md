@@ -102,7 +102,7 @@ pip install -r requirements-dev.txt
 pre-commit install
 
 # Run tests to verify setup
-pytest
+python -m pytest
 ```
 
 ---
@@ -298,10 +298,16 @@ nl-sql-agent/
 │   ├── test_end_to_end.py
 │   ├── test_sql_generation.py
 │   └── conftest.py
+├── data/                 # Data storage
+│   ├── chroma_db/           # Vector database files
+│   ├── logs/                # Application logs
+│   └── outputs/             # Generated output files (response.html, test_*.json)
 ├── requirements.txt       # Python dependencies
 ├── requirements-dev.txt   # Development dependencies
 ├── docker-compose.yml     # Docker configuration
 ├── pytest.ini           # Pytest configuration
+├── .pre-commit-config.yaml # Pre-commit hooks
+├── .coveragerc          # Coverage configuration
 └── README.md
 ```
 

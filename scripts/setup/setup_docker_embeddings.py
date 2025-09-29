@@ -30,10 +30,10 @@ def setup_docker_embeddings():
         print("❌ Docker is not running. Please start Docker first.")
         return False
 
-    # Create chroma_db directory if it doesn't exist
-    if not os.path.exists("chroma_db"):
-        os.makedirs("chroma_db")
-        print("✅ Created chroma_db directory")
+    # Create data/chroma_db directory if it doesn't exist
+    if not os.path.exists("data/chroma_db"):
+        os.makedirs("data/chroma_db", exist_ok=True)
+        print("✅ Created data/chroma_db directory")
 
     # Stop existing containers
     print("1. Stopping existing containers...")

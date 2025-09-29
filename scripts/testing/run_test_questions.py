@@ -369,9 +369,10 @@ def run_all_tests():
             print(f"     Y-axis: {y_sample}")
 
     # Save detailed results to file
-    with open("test_results.json", "w") as f:
+    os.makedirs("data/outputs", exist_ok=True)
+    with open("data/outputs/test_results.json", "w") as f:
         json.dump(results, f, indent=2)
-    print("\n💾 Detailed results saved to: test_results.json")
+    print("\n💾 Detailed results saved to: data/outputs/test_results.json")
 
     print("\n🎯 Next Steps:")
     if error_count > 0 or warning_count > 0:

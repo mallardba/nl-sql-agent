@@ -9,7 +9,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db:/docker-entrypoint-initdb.d
-      - ./chroma_db:/app/chroma_db
+      - ./data/chroma_db:/app/data/chroma_db
 
 volumes:
   mysql_data:

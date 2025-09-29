@@ -32,9 +32,9 @@ def _get_chroma_client():
     if _chroma_client is None:
         # Use persistent storage in Docker path or local fallback
         persist_directory = (
-            "/app/chroma_db"
-            if os.path.exists("/app/chroma_db")
-            else os.path.join(os.getcwd(), "chroma_db")
+            "/app/data/chroma_db"
+            if os.path.exists("/app/data/chroma_db")
+            else os.path.join(os.getcwd(), "data", "chroma_db")
         )
         _chroma_client = chromadb.PersistentClient(
             path=persist_directory, settings=Settings(anonymized_telemetry=False)

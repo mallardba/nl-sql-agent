@@ -7,6 +7,7 @@ This helps verify the system's robustness and error recovery mechanisms.
 """
 
 import json
+import os
 import sys
 import time
 from typing import Any, Dict, List
@@ -378,7 +379,8 @@ def main():
         analyze_failure_results(results)
 
         # Save results to file
-        output_file = "test_failure_results.json"
+        output_file = "data/outputs/test_failure_results.json"
+        os.makedirs("data/outputs", exist_ok=True)
         with open(output_file, "w") as f:
             json.dump(results, f, indent=2)
         print(f"💾 Results saved to: {output_file}")

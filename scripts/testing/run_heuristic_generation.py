@@ -7,6 +7,7 @@ trigger heuristic patterns and verifying the responses.
 """
 
 import json
+import os
 import sys
 import time
 from typing import Any, Dict, List
@@ -324,7 +325,8 @@ def main():
         analyze_results(results)
 
         # Save results to file
-        output_file = "test_heuristic_generation_results.json"
+        output_file = "data/outputs/test_heuristic_generation_results.json"
+        os.makedirs("data/outputs", exist_ok=True)
         with open(output_file, "w") as f:
             json.dump(results, f, indent=2)
         print(f"💾 Results saved to: {output_file}")
